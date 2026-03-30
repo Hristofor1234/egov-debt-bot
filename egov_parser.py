@@ -180,23 +180,17 @@ class EgovParser:
         return await self.page.locator("span[ng-repeat='page in pages'] a").count() > 0
 
     async def _extract_table_data(self, table_locator) -> Dict:
-        """
-        Основной парсинг — по позиции строк.
-        Это надежнее, чем по тексту заголовков, потому что язык страницы плавает.
-        """
         rows = table_locator.locator("tr")
         count = await rows.count()
 
         item = {
             "issuer": "-",
-            "enforcement_number": "-",
             "start_date": "-",
             "amount": "-",
             "executor_contact": "-",
         }
 
         values = []
-        labels = []
 
         for i in range(count):
             row = rows.nth(i)
@@ -205,26 +199,16 @@ class EgovParser:
             if cell_count < 2:
                 continue
 
-            label = (await cells.nth(0).inner_text()).strip()
             value = (await cells.nth(1).inner_text()).strip() or "-"
-
-            labels.append(label)
             values.append(value)
 
-        logger.info("Parsed table labels: %s", labels)
-        logger.info("Parsed table values: %s", values)
-
-        # Надежный разбор по порядку строк:
         # 0 = орган
-        # 1 = номер производства
+        # 1 = номер производства (игнорируем)
         # 2 = дата возбуждения
         # 3 = сумма
-        # 4 = категория дела
         # 5 = контакт исполнителя
         if len(values) >= 1:
             item["issuer"] = values[0]
-        if len(values) >= 2:
-            item["enforcement_number"] = values[1]
         if len(values) >= 3:
             item["start_date"] = values[2]
         if len(values) >= 4:
@@ -291,8 +275,7 @@ class EgovParser:
                 table = debt_items.nth(item_index).locator("table.decorated-table").first
                 parsed = await self._extract_table_data(table)
 
-                # считаем запись валидной, если есть хотя бы орган или номер производства
-                if parsed["issuer"] != "-" or parsed["enforcement_number"] != "-":
+                if parsed["issuer"] != "-" or parsed["start_date"] != "-" or parsed["amount"] != "-":
                     details.append(parsed)
 
         return details
@@ -382,7 +365,6 @@ class EgovParser:
                 await self._click_new_request_if_possible()
                 return result
 
-            # fallback для кейса "нет долгов, но явный noData не нашли"
             if visible_items == 0 and has_new_request and not has_pagination:
                 logger.info("Fallback no-data detected for iin=%s", iin)
                 result = {

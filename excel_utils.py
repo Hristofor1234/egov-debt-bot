@@ -5,7 +5,6 @@ from openpyxl import load_workbook
 
 INPUT_SHEET = "input"
 RESULT_SHEET = "result"
-DETAILS_SHEET = "details"
 
 
 class ExcelValidationError(Exception):
@@ -74,11 +73,8 @@ def write_results(source_file: Path, output_file: Path, results: List[Dict]) -> 
 
     if RESULT_SHEET in wb.sheetnames:
         del wb[RESULT_SHEET]
-    if DETAILS_SHEET in wb.sheetnames:
-        del wb[DETAILS_SHEET]
 
     result_ws = wb.create_sheet(RESULT_SHEET)
-    details_ws = wb.create_sheet(DETAILS_SHEET)
 
     result_ws.append([
         "fio",
@@ -87,39 +83,54 @@ def write_results(source_file: Path, output_file: Path, results: List[Dict]) -> 
         "travel_status",
         "total_amount",
         "debts_count",
-        "error_message",
-    ])
-
-    details_ws.append([
-        "fio",
-        "iin",
         "issuer",
-        "enforcement_number",
         "start_date",
         "amount",
         "executor_contact",
+        "error_message",
     ])
 
     for result in results:
-        result_ws.append([
-            result.get("fio", ""),
-            result.get("iin", ""),
-            result.get("check_status", ""),
-            result.get("travel_status", ""),
-            result.get("total_amount", ""),
-            result.get("debts_count", 0),
-            result.get("error_message", ""),
-        ])
+        fio = result.get("fio", "")
+        iin = result.get("iin", "")
+        check_status = result.get("check_status", "")
+        travel_status = result.get("travel_status", "")
+        total_amount = result.get("total_amount", "")
+        debts_count = result.get("debts_count", 0)
+        error_message = result.get("error_message", "")
+        details = result.get("details", [])
 
-        for detail in result.get("details", []):
-            details_ws.append([
-                result.get("fio", ""),
-                result.get("iin", ""),
-                detail.get("issuer", ""),
-                detail.get("enforcement_number", ""),
-                detail.get("start_date", ""),
-                detail.get("amount", ""),
-                detail.get("executor_contact", ""),
+        # Если долгов нет — все равно пишем одну строку
+        if not details:
+            result_ws.append([
+                fio,
+                iin,
+                check_status,
+                travel_status,
+                total_amount,
+                debts_count,
+                "-",
+                "-",
+                "-",
+                "-",
+                error_message,
+            ])
+            continue
+
+        # Если долгов несколько — одна строка на каждый долг
+        for detail in details:
+            result_ws.append([
+                fio,
+                iin,
+                check_status,
+                travel_status,
+                total_amount,
+                debts_count,
+                detail.get("issuer", "-"),
+                detail.get("start_date", "-"),
+                detail.get("amount", "-"),
+                detail.get("executor_contact", "-"),
+                error_message,
             ])
 
     wb.save(output_file)

@@ -72,7 +72,7 @@ async def document_handler(message: Message):
         document.file_name
     )
 
-    await message.answer("Файл получен. Проверяю структуру и запускаю обработку.")
+    await message.answer("Файл получен. Проверяю структуру.")
 
     telegram_file = await bot.get_file(document.file_id)
 
@@ -107,9 +107,10 @@ async def document_handler(message: Message):
     results = []
     total = len(people)
 
-    await message.answer(f"Найдено строк для обработки: {total}")
-
-    await message.answer("Файл обрабатывается, это может занять несколько минут.")
+    await message.answer(
+        f"Найдено строк для обработки: {total}\n"
+        "Начинаю обработку, пожалуйста подождите."
+    )
 
     async with EgovParser() as parser:
         for idx, person in enumerate(people, start=1):
@@ -134,7 +135,7 @@ async def document_handler(message: Message):
                 result["error_message"],
             )
 
-            await asyncio.sleep(5)
+            await asyncio.sleep(3)
 
             if idx % 5 == 0 or idx == total:
                 await message.answer(f"Обработано: {idx}/{total}")
@@ -176,11 +177,11 @@ async def document_handler(message: Message):
         caption="Готовый файл с результатами"
     )
 
+
 @dp.message(F.text)
 async def text_handler(message: Message):
     text = (message.text or "").strip()
 
-    # команды не трогаем, их обрабатывают отдельные handlers
     if text.startswith("/"):
         return
 
@@ -189,6 +190,7 @@ async def text_handler(message: Message):
         "Лист: input\n"
         "Столбцы: fio, iin"
     )
+
 
 async def main():
     logger.info("Bot polling started")

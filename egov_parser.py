@@ -80,9 +80,6 @@ class EgovParser:
         except Exception:
             logger.info("networkidle not reached, continuing")
 
-        logger.info("Page title: %s", await self.page.title())
-        logger.info("Current URL: %s", self.page.url)
-
         possible_selectors = [
             "input[ng-model='viewModel.inputModel']",
             "input[maxlength='12']",
@@ -131,14 +128,9 @@ class EgovParser:
         entered_value = await input_locator.input_value()
         logger.info("Entered value in input: %s", entered_value)
 
-        await self.page.wait_for_timeout(1500)
+        await self.page.wait_for_timeout(1200)
 
         next_button = self.page.locator("button.next-button, button:has-text('Далее')").first
-        if await next_button.count() == 0:
-            await self._save_debug("next_button_not_found")
-            raise RuntimeError("Кнопка 'Далее' не найдена")
-
-        logger.info("Clicking 'Далее'")
         await next_button.click()
 
         await self.page.wait_for_timeout(5000)
@@ -148,9 +140,8 @@ class EgovParser:
         except Exception:
             logger.info("networkidle after click not reached, continuing")
 
-        logger.info("Waiting for result markers")
         await self.page.wait_for_selector(
-            "div.wrapper, p[ng-show='noData'], div.debt-item, div.pages, button.button-newreq",
+            "div.wrapper, div.debt-item, div.pages, button.button-newreq",
             timeout=30000
         )
 
@@ -158,18 +149,41 @@ class EgovParser:
         wrapper = self.page.locator("div.wrapper").first
         text = (await wrapper.inner_text()).lower()
 
-        if "выезд:" in text and "запрещен" in text:
+        if ("выезд" in text and "запрещ" in text) or ("шығу" in text and "тыйым" in text):
             return "Запрещен"
-        if "выезд:" in text and "разрешен" in text:
+        if ("выезд" in text and "разреш" in text) or ("шығу" in text and "рұқсат" in text):
             return "Разрешен"
         return "-"
 
-    async def _is_no_data(self) -> bool:
-        wrapper = self.page.locator("div.wrapper").first
-        text = (await wrapper.inner_text()).lower()
-        return "сведения отсутствуют" in text or "не является должником" in text
+    async def _visible_debt_items_count(self) -> int:
+        return await self.page.locator("div.debt-item:visible").count()
+
+    async def _visible_no_data_message(self) -> bool:
+        candidates = self.page.locator("div.wrapper p:visible")
+        count = await candidates.count()
+
+        for i in range(count):
+            text = (await candidates.nth(i).inner_text()).strip().lower()
+            if (
+                "сведения отсутствуют" in text
+                or "не является должником" in text
+                or "мәліметтер жоқ" in text
+                or "борышкер болып табылмайды" in text
+            ):
+                return True
+        return False
+
+    async def _has_new_request_button(self) -> bool:
+        return await self.page.locator("button.button-newreq, button:has-text('Новый запрос')").count() > 0
+
+    async def _has_pagination(self) -> bool:
+        return await self.page.locator("span[ng-repeat='page in pages'] a").count() > 0
 
     async def _extract_table_data(self, table_locator) -> Dict:
+        """
+        Основной парсинг — по позиции строк.
+        Это надежнее, чем по тексту заголовков, потому что язык страницы плавает.
+        """
         rows = table_locator.locator("tr")
         count = await rows.count()
 
@@ -181,28 +195,42 @@ class EgovParser:
             "executor_contact": "-",
         }
 
+        values = []
+        labels = []
+
         for i in range(count):
             row = rows.nth(i)
             cells = row.locator("td")
-            if await cells.count() < 2:
+            cell_count = await cells.count()
+            if cell_count < 2:
                 continue
 
-            key = (await cells.nth(0).inner_text()).strip().lower()
-            value = (await cells.nth(1).inner_text()).strip()
+            label = (await cells.nth(0).inner_text()).strip()
+            value = (await cells.nth(1).inner_text()).strip() or "-"
 
-            if not value:
-                value = "-"
+            labels.append(label)
+            values.append(value)
 
-            if "орган, вынесший исполнительный документ" in key:
-                item["issuer"] = value
-            elif "номер исполнительного производства" in key:
-                item["enforcement_number"] = value
-            elif "дата возбуждения исполнительного производства" in key:
-                item["start_date"] = value
-            elif "сумма долга в тенге" in key:
-                item["amount"] = value
-            elif "информация для связи с судебным исполнителем" in key:
-                item["executor_contact"] = value
+        logger.info("Parsed table labels: %s", labels)
+        logger.info("Parsed table values: %s", values)
+
+        # Надежный разбор по порядку строк:
+        # 0 = орган
+        # 1 = номер производства
+        # 2 = дата возбуждения
+        # 3 = сумма
+        # 4 = категория дела
+        # 5 = контакт исполнителя
+        if len(values) >= 1:
+            item["issuer"] = values[0]
+        if len(values) >= 2:
+            item["enforcement_number"] = values[1]
+        if len(values) >= 3:
+            item["start_date"] = values[2]
+        if len(values) >= 4:
+            item["amount"] = values[3]
+        if len(values) >= 6:
+            item["executor_contact"] = values[5]
 
         return item
 
@@ -238,7 +266,6 @@ class EgovParser:
                 if current_before != page_index:
                     page_links = self.page.locator("span[ng-repeat='page in pages'] a")
                     target_link = page_links.nth(page_index)
-
                     await target_link.scroll_into_view_if_needed()
                     await target_link.click()
 
@@ -263,7 +290,9 @@ class EgovParser:
             for item_index in range(items_count):
                 table = debt_items.nth(item_index).locator("table.decorated-table").first
                 parsed = await self._extract_table_data(table)
-                if any(v != "-" for v in parsed.values()):
+
+                # считаем запись валидной, если есть хотя бы орган или номер производства
+                if parsed["issuer"] != "-" or parsed["enforcement_number"] != "-":
                     details.append(parsed)
 
         return details
@@ -279,28 +308,11 @@ class EgovParser:
 
     async def _click_new_request_if_possible(self):
         try:
-            new_request_button = self.page.locator("button.button-newreq, button:has-text('Новый запрос')").first
-            if await new_request_button.count() > 0:
+            locator = self.page.locator("button.button-newreq, button:has-text('Новый запрос')")
+            if await locator.count() > 0:
                 logger.info("Clicking 'Новый запрос'")
-                await new_request_button.click()
-                await self.page.wait_for_timeout(2000)
-
-                # если после клика поле ИИН не вернулось — просто открываем стартовую ссылку
-                input_candidates = [
-                    "input[ng-model='viewModel.inputModel']",
-                    "input[maxlength='12']",
-                    "div#input input[type='text']",
-                    "input.input-type.monospace",
-                ]
-
-                found = False
-                for selector in input_candidates:
-                    if await self.page.locator(selector).count() > 0:
-                        found = True
-                        break
-
-                if not found:
-                    await self._go_to_start_page()
+                await locator.first.click()
+                await self.page.wait_for_timeout(2500)
             else:
                 await self._go_to_start_page()
         except Exception:
@@ -314,9 +326,49 @@ class EgovParser:
             await self._open_service()
             await self._fill_iin_and_submit(iin)
 
-            if await self._is_no_data():
-                logger.info("No data found for iin=%s", iin)
+            visible_items = await self._visible_debt_items_count()
+            visible_no_data = await self._visible_no_data_message()
+            has_new_request = await self._has_new_request_button()
+            has_pagination = await self._has_pagination()
 
+            logger.info(
+                "Result markers | iin=%s | visible_debt_items=%s | visible_no_data=%s | new_request=%s | pagination=%s",
+                iin,
+                visible_items,
+                visible_no_data,
+                has_new_request,
+                has_pagination
+            )
+
+            if visible_items > 0:
+                travel_status = await self._extract_travel_status()
+                details = await self._extract_all_pages_details()
+                total_amount = self._sum_amounts(details)
+
+                result = {
+                    "fio": fio,
+                    "iin": iin,
+                    "check_status": "Обработано",
+                    "travel_status": travel_status,
+                    "total_amount": total_amount,
+                    "debts_count": len(details),
+                    "error_message": "",
+                    "details": details,
+                }
+
+                logger.info(
+                    "Parsed result | iin=%s | status=%s | travel=%s | debts=%s | total=%s",
+                    iin,
+                    result["check_status"],
+                    result["travel_status"],
+                    result["debts_count"],
+                    result["total_amount"],
+                )
+
+                await self._click_new_request_if_possible()
+                return result
+
+            if visible_no_data:
                 result = {
                     "fio": fio,
                     "iin": iin,
@@ -327,16 +379,12 @@ class EgovParser:
                     "error_message": "",
                     "details": [],
                 }
-
                 await self._click_new_request_if_possible()
                 return result
 
-            travel_status = await self._extract_travel_status()
-            details = await self._extract_all_pages_details()
-            total_amount = self._sum_amounts(details)
-
-            if not details:
-                logger.warning("Result page opened, but no debt items parsed | iin=%s", iin)
+            # fallback для кейса "нет долгов, но явный noData не нашли"
+            if visible_items == 0 and has_new_request and not has_pagination:
+                logger.info("Fallback no-data detected for iin=%s", iin)
                 result = {
                     "fio": fio,
                     "iin": iin,
@@ -349,26 +397,20 @@ class EgovParser:
                 }
                 await self._click_new_request_if_possible()
                 return result
+
+            logger.warning("Ambiguous result page for iin=%s", iin)
+            await self._save_debug(f"ambiguous_result_{iin}")
 
             result = {
                 "fio": fio,
                 "iin": iin,
-                "check_status": "Обработано",
-                "travel_status": travel_status,
-                "total_amount": total_amount,
-                "debts_count": len(details),
-                "error_message": "",
-                "details": details,
+                "check_status": "Ошибка проверки",
+                "travel_status": "-",
+                "total_amount": "-",
+                "debts_count": 0,
+                "error_message": "Не удалось однозначно определить результат на странице",
+                "details": [],
             }
-
-            logger.info(
-                "Parsed result | iin=%s | status=%s | travel=%s | debts=%s | total=%s",
-                iin,
-                result["check_status"],
-                result["travel_status"],
-                result["debts_count"],
-                result["total_amount"],
-            )
 
             await self._click_new_request_if_possible()
             return result

@@ -40,6 +40,33 @@ RETRY_DELAYS = [45, 90]
 MAX_CONSECUTIVE_ERRORS = 4
 # -----------------------------------------------
 
+# ---------- Хранение файлов ----------
+MAX_INCOMING_FILES = 3
+MAX_OUTPUT_FILES = 3
+# ------------------------------------
+
+
+def cleanup_old_files(directory: Path, keep_last: int) -> None:
+    """
+    Оставляет только keep_last последних файлов в директории.
+    Сортировка идет по времени изменения файла.
+    Поддиректории не трогаем.
+    """
+    if not directory.exists():
+        return
+
+    files = [p for p in directory.iterdir() if p.is_file()]
+    files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+
+    old_files = files[keep_last:]
+
+    for file_path in old_files:
+        try:
+            file_path.unlink()
+            logger.info("Deleted old file: %s", file_path)
+        except Exception as e:
+            logger.warning("Failed to delete old file %s: %s", file_path, e)
+
 
 def format_duration(seconds: float) -> str:
     seconds = max(0, int(round(seconds)))
@@ -176,6 +203,9 @@ async def document_handler(message: Message):
 
     logger.info("Saved input file to %s", final_input_path)
 
+    # Чистим старые входящие файлы, оставляем только последние 3
+    cleanup_old_files(INCOMING_DIR, MAX_INCOMING_FILES)
+
     file_id = storage.save_file_record(
         user_id=message.from_user.id,
         original_name=document.file_name,
@@ -296,6 +326,10 @@ async def document_handler(message: Message):
         logger.info("Writing output file to %s", output_file)
         write_results(final_input_path, output_file, results)
         storage.mark_processed(file_id, str(output_file))
+
+        # Чистим старые исходящие файлы, оставляем только последние 3
+        cleanup_old_files(OUTPUT_DIR, MAX_OUTPUT_FILES)
+
     except Exception as e:
         logger.exception("Unhandled error in document_handler")
         storage.mark_failed(file_id)

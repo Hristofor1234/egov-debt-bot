@@ -27,18 +27,18 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 storage = Storage(Path("data/bot.db"))
 
-# ---------- Настройки бережной обработки ----------
-MIN_DELAY_SECONDS = 8
-MAX_DELAY_SECONDS = 14
+# ---------- Антибан / бережная обработка ----------
+MIN_DELAY_SECONDS = 10
+MAX_DELAY_SECONDS = 18
 
-BATCH_SIZE = 25
-BATCH_PAUSE_SECONDS = 180
+BATCH_SIZE = 20
+BATCH_PAUSE_SECONDS = 240
 
 MAX_RETRIES = 3
-RETRY_DELAYS = [30, 60]
+RETRY_DELAYS = [45, 90]
 
-MAX_CONSECUTIVE_ERRORS = 5
-# --------------------------------------------------
+MAX_CONSECUTIVE_ERRORS = 4
+# -----------------------------------------------
 
 
 def format_duration(seconds: float) -> str:
@@ -60,28 +60,19 @@ def format_duration(seconds: float) -> str:
 
 
 def estimate_processing_time(total_rows: int, avg_check_duration: float | None) -> float:
-    """
-    Считаем оценку не на глаз:
-    - берем среднее реальное время одной проверки из прошлых запусков
-    - добавляем среднюю межстрочную паузу
-    - добавляем batch pause
-    """
     if total_rows <= 0:
         return 0.0
 
-    # Если статистики еще нет — берем безопасную стартовую оценку
     if avg_check_duration is None:
-        avg_check_duration = 16.0
+        avg_check_duration = 18.0
 
     avg_human_delay = (MIN_DELAY_SECONDS + MAX_DELAY_SECONDS) / 2
 
     processing_time = total_rows * avg_check_duration
 
-    # Паузы между строками — кроме последней
     if total_rows > 1:
         processing_time += (total_rows - 1) * avg_human_delay
 
-    # Паузы после блоков
     batch_pauses = (total_rows - 1) // BATCH_SIZE
     processing_time += batch_pauses * BATCH_PAUSE_SECONDS
 
@@ -98,7 +89,13 @@ async def retry_check(parser: EgovParser, fio: str, iin: str) -> dict:
     last_result = None
 
     for attempt in range(1, MAX_RETRIES + 1):
-        logger.info("Check attempt %s/%s | fio=%s | iin=%s", attempt, MAX_RETRIES, fio, iin)
+        logger.info(
+            "Check attempt %s/%s | fio=%s | iin=%s",
+            attempt,
+            MAX_RETRIES,
+            fio,
+            iin
+        )
 
         result = await parser.check_person(fio, iin)
         last_result = result
@@ -126,9 +123,10 @@ async def start_handler(message: Message):
     await message.answer(
         "Отправьте Excel-файл .xlsx\n\n"
         "Требования:\n"
-        "- лист: input\n"
-        "- столбцы: fio, iin\n\n"
-        "Я верну готовый файл с листами input и result."
+        "- бот читает только лист: input\n"
+        "- обязательные столбцы: fio / фио и iin / иин\n\n"
+        "Бот можно повторно кормить его же обработанным файлом — "
+        "он заново прочитает только лист input и пересоздаст result."
     )
 
 
@@ -208,7 +206,10 @@ async def document_handler(message: Message):
     if avg_check_duration is None:
         estimate_note = "Оценка стартовая, статистика еще не накоплена."
     else:
-        estimate_note = f"Оценка рассчитана по среднему времени прошлых проверок: {avg_check_duration:.1f} сек на запись."
+        estimate_note = (
+            f"Оценка рассчитана по среднему времени прошлых проверок: "
+            f"{avg_check_duration:.1f} сек на запись."
+        )
 
     await message.answer(
         f"Найдено строк для обработки: {total}\n"
@@ -268,7 +269,7 @@ async def document_handler(message: Message):
                 logger.error("Too many consecutive errors. Stopping processing.")
                 await message.answer(
                     "Обработка остановлена: слишком много ошибок подряд.\n"
-                    "Это похоже на нестабильную работу сайта или временное ограничение."
+                    "Похоже на нестабильную работу сайта или временное ограничение."
                 )
                 break
 
@@ -282,7 +283,8 @@ async def document_handler(message: Message):
                     BATCH_PAUSE_SECONDS
                 )
                 await message.answer(
-                    f"Обработано {idx}/{total}. Делаю техническую паузу, чтобы не перегружать источник."
+                    f"Обработано {idx}/{total}. Делаю техническую паузу, "
+                    "чтобы не перегружать источник."
                 )
                 await asyncio.sleep(BATCH_PAUSE_SECONDS)
             elif idx < total:
@@ -335,14 +337,17 @@ async def text_handler(message: Message):
 
     await message.answer(
         "Нужно закинуть Excel-файл .xlsx.\n"
-        "Лист: input\n"
-        "Столбцы: fio, iin"
+        "Бот читает только лист 'input'.\n"
+        "Обязательные столбцы: fio / фио и iin / иин."
     )
 
 
 async def main():
     logger.info("Bot polling started")
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        logger.info("Bot stopped manually")
 
 
 if __name__ == "__main__":

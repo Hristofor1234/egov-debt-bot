@@ -8,6 +8,9 @@ from openpyxl.utils import get_column_letter
 INPUT_SHEET = "input"
 RESULT_SHEET = "result"
 
+FIO_ALIASES = {"fio", "фио"}
+IIN_ALIASES = {"iin", "иин"}
+
 
 class ExcelValidationError(Exception):
     pass
@@ -23,20 +26,44 @@ def _normalize_header(value) -> str:
     return _normalize(value).lower()
 
 
+def _find_required_columns(headers: List[str]) -> Dict[str, int]:
+    fio_idx = None
+    iin_idx = None
+
+    for idx, header in enumerate(headers, start=1):
+        if header in FIO_ALIASES and fio_idx is None:
+            fio_idx = idx
+        if header in IIN_ALIASES and iin_idx is None:
+            iin_idx = idx
+
+    if fio_idx is None:
+        raise ExcelValidationError(
+            "Не найден обязательный столбец ФИО. Допустимые названия: fio / фио"
+        )
+
+    if iin_idx is None:
+        raise ExcelValidationError(
+            "Не найден обязательный столбец ИИН. Допустимые названия: iin / иин"
+        )
+
+    return {
+        "fio": fio_idx,
+        "iin": iin_idx,
+    }
+
+
 def read_people(file_path: Path) -> List[Dict]:
     wb = load_workbook(file_path)
+
     if INPUT_SHEET not in wb.sheetnames:
-        raise ExcelValidationError(f"Лист '{INPUT_SHEET}' не найден")
+        raise ExcelValidationError(
+            f"Лист '{INPUT_SHEET}' не найден. Бот читает только лист '{INPUT_SHEET}'."
+        )
 
     ws = wb[INPUT_SHEET]
     headers = [_normalize_header(cell.value) for cell in ws[1]]
+    header_map = _find_required_columns(headers)
 
-    required = ["fio", "iin"]
-    for col in required:
-        if col not in headers:
-            raise ExcelValidationError(f"Нет обязательного столбца: {col}")
-
-    header_map = {header: idx + 1 for idx, header in enumerate(headers)}
     people = []
     seen_iins = set()
 
@@ -49,10 +76,15 @@ def read_people(file_path: Path) -> List[Dict]:
 
         if not fio:
             raise ExcelValidationError(f"Пустое ФИО в строке {row_idx}")
+
         if not iin:
             raise ExcelValidationError(f"Пустой ИИН в строке {row_idx}")
+
+        iin = iin.replace(" ", "").replace("\u00A0", "")
+
         if not iin.isdigit() or len(iin) != 12:
             raise ExcelValidationError(f"Некорректный ИИН в строке {row_idx}: {iin}")
+
         if iin in seen_iins:
             raise ExcelValidationError(f"Дубликат ИИН в строке {row_idx}: {iin}")
 
@@ -65,7 +97,7 @@ def read_people(file_path: Path) -> List[Dict]:
         })
 
     if not people:
-        raise ExcelValidationError("Нет строк для обработки")
+        raise ExcelValidationError("На листе 'input' нет строк для обработки")
 
     return people
 
@@ -121,10 +153,14 @@ def _format_worksheet(ws) -> None:
         else:
             ws.row_dimensions[row_index].height = max(18, min(15 * max_lines, 60))
 
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+
 
 def write_results(source_file: Path, output_file: Path, results: List[Dict]) -> None:
     wb = load_workbook(source_file)
 
+    # Старый result всегда удаляем и создаем заново.
     if RESULT_SHEET in wb.sheetnames:
         del wb[RESULT_SHEET]
 

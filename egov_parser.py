@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, List
 from playwright.async_api import async_playwright
 from config import HEADLESS, DATA_DIR
+from decimal import Decimal, InvalidOperation
 
 logger = logging.getLogger(__name__)
 
@@ -202,21 +203,66 @@ class EgovParser:
             value = (await cells.nth(1).inner_text()).strip() or "-"
             values.append(value)
 
+        # Структура таблицы:
         # 0 = орган
-        # 1 = номер производства (игнорируем)
+        # 1 = номер исполнительного производства (игнорируем)
         # 2 = дата возбуждения
         # 3 = сумма
+        # 4 = категория дела (игнорируем)
         # 5 = контакт исполнителя
+        # 6 = дата наложения запрета на выезд (если есть) — игнорируем
+
         if len(values) >= 1:
             item["issuer"] = values[0]
+
         if len(values) >= 3:
             item["start_date"] = values[2]
+
         if len(values) >= 4:
-            item["amount"] = values[3]
+            item["amount"] = self._normalize_amount_string(values[3])
+
         if len(values) >= 6:
             item["executor_contact"] = values[5]
 
         return item
+
+    def _normalize_amount_string(self, raw: str) -> str:
+        raw = str(raw).strip()
+
+        if not raw or raw == "-":
+            return "-"
+
+        # Убираем обычные и неразрывные пробелы, меняем запятую на точку
+        normalized = raw.replace(" ", "").replace("\u00A0", "").replace(",", ".")
+
+        cleaned_chars = []
+        dot_seen = False
+
+        for i, ch in enumerate(normalized):
+            if ch.isdigit():
+                cleaned_chars.append(ch)
+            elif ch == "-" and i == 0:
+                cleaned_chars.append(ch)
+            elif ch == "." and not dot_seen:
+                cleaned_chars.append(ch)
+                dot_seen = True
+
+        cleaned = "".join(cleaned_chars)
+
+        if cleaned in ("", "-", ".", "-."):
+            logger.warning("Amount is empty after cleaning: raw=%s", raw)
+            return "-"
+
+        try:
+            value = Decimal(cleaned)
+        except InvalidOperation:
+            logger.warning("Failed to normalize amount string: raw=%s | cleaned=%s", raw, cleaned)
+            return "-"
+
+        if value == value.to_integral():
+            return str(value.quantize(Decimal("1")))
+
+        return format(value.quantize(Decimal("0.01")), "f")
 
     async def _get_current_page_index(self) -> int:
         page_links = self.page.locator("span[ng-repeat='page in pages'] a")
@@ -281,13 +327,47 @@ class EgovParser:
         return details
 
     def _sum_amounts(self, details: List[Dict]) -> str:
-        total = 0
+        total = Decimal("0")
+
         for item in details:
-            raw = item.get("amount", "")
-            cleaned = "".join(ch for ch in raw if ch.isdigit())
-            if cleaned:
-                total += int(cleaned)
-        return str(total) if total else "-"
+            raw = str(item.get("amount", "")).strip()
+
+            if not raw or raw == "-":
+                continue
+
+            normalized = raw.replace(" ", "").replace("\u00A0", "").replace(",", ".")
+
+            cleaned_chars = []
+            dot_seen = False
+
+            for i, ch in enumerate(normalized):
+                if ch.isdigit():
+                    cleaned_chars.append(ch)
+                elif ch == "-" and i == 0:
+                    cleaned_chars.append(ch)
+                elif ch == "." and not dot_seen:
+                    cleaned_chars.append(ch)
+                    dot_seen = True
+
+            cleaned = "".join(cleaned_chars)
+
+            if cleaned in ("", "-", ".", "-."):
+                logger.warning("Amount is empty after cleaning: raw=%s", raw)
+                continue
+
+            try:
+                total += Decimal(cleaned)
+            except InvalidOperation:
+                logger.warning("Failed to parse amount: raw=%s | cleaned=%s", raw, cleaned)
+                continue
+
+        if total == 0:
+            return "-"
+
+        if total == total.to_integral():
+            return str(total.quantize(Decimal("1")))
+
+        return format(total.quantize(Decimal("0.01")), "f")
 
     async def _click_new_request_if_possible(self):
         try:

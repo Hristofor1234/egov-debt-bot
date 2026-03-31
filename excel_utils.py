@@ -83,17 +83,14 @@ def _format_worksheet(ws) -> None:
         wrap_text=True
     )
 
-    # Оформление заголовков
     for cell in ws[1]:
         cell.font = header_font
         cell.alignment = header_alignment
 
-    # Оформление данных
     for row in ws.iter_rows(min_row=2):
         for cell in row:
             cell.alignment = data_alignment
 
-    # Автоподбор ширины столбцов
     for column_cells in ws.columns:
         max_length = 0
         column_index = column_cells[0].column
@@ -101,7 +98,6 @@ def _format_worksheet(ws) -> None:
 
         for cell in column_cells:
             value = "" if cell.value is None else str(cell.value)
-            # учитываем самую длинную строку внутри ячейки
             lines = value.splitlines() if value else [""]
             longest_line = max((len(line) for line in lines), default=0)
             if longest_line > max_length:
@@ -110,7 +106,6 @@ def _format_worksheet(ws) -> None:
         adjusted_width = min(max(max_length + 2, 12), 45)
         ws.column_dimensions[column_letter].width = adjusted_width
 
-    # Небольшая подстройка высоты строк
     for row in ws.iter_rows():
         row_index = row[0].row
         max_lines = 1
@@ -136,17 +131,17 @@ def write_results(source_file: Path, output_file: Path, results: List[Dict]) -> 
     result_ws = wb.create_sheet(RESULT_SHEET)
 
     result_ws.append([
-        "fio",
-        "iin",
-        "check_status",
-        "travel_status",
-        "issuer",
-        "executor_contact",
-        "start_date",
-        "amount",
-        "total_amount",
-        "debts_count",
-        "error_message",
+        "ФИО",
+        "ИИН",
+        "Статус обработки",
+        "Выезд запрещен",
+        "У кого задолженность",
+        "Контакт исполнителя",
+        "Дата возбуждения",
+        "Сумма долга",
+        "Общая сумма",
+        "Количество задолженностей",
+        "Текст ошибки",
     ])
 
     for result in results:
@@ -190,7 +185,6 @@ def write_results(source_file: Path, output_file: Path, results: List[Dict]) -> 
                 error_message,
             ])
 
-    # Форматируем оба листа
     for ws in wb.worksheets:
         _format_worksheet(ws)
 

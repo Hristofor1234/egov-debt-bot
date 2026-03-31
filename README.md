@@ -48,3 +48,7 @@ MAX_CONSECUTIVE_ERRORS=4
 source .venv/bin/activate
 
 python bot.py
+
+### Что нужно для постоянной работы
+
+Нужно запускать его как systemd service на Linux.

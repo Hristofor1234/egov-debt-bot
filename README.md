@@ -46,4 +46,5 @@ MAX_CONSECUTIVE_ERRORS=4
 ### Запуск бота вручную
 
 source .venv/bin/activate
+
 python bot.py

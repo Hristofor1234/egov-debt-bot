@@ -5,12 +5,3 @@ __pycache__/
 *.pyo
 .idea/
 .vscode/
-
-data/*
-!data/.gitkeep
-!data/incoming/
-!data/incoming/.gitkeep
-!data/output/
-!data/output/.gitkeep
-!data/debug/
-!data/debug/.gitkeep

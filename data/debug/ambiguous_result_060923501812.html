@@ -1,0 +1,1251 @@
+<!DOCTYPE html><html lang="ru" ng-app="app" build="webapp v1.0.0 @ 26.06 17:52" frontend="2.19.58" ng-class="{ 'large-font': ($root.$settings.isBigFont() || $root.fontSize === 2), 'extra-large-font': $root.fontSize === 3 }" class="ng-scope"><head><style type="text/css">@charset "UTF-8";
+/* CSS Document */
+
+/** Structure */
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  font-size: 14px;
+}
+
+#system-error {
+  font-size: 1.5em;
+  text-align: center;
+}
+
+#json, #xml {
+  display: none;
+}
+
+#header {
+  position: fixed;
+  width: 100%;
+}
+
+#specs {
+  padding-top: 50px;
+}
+
+#header .angular {
+  font-family: Courier New, monospace;
+  font-weight: bold;
+}
+
+#header h1 {
+  font-weight: normal;
+  float: left;
+  font-size: 30px;
+  line-height: 30px;
+  margin: 0;
+  padding: 10px 10px;
+  height: 30px;
+}
+
+#application h2,
+#specs h2 {
+  margin: 0;
+  padding: 0.5em;
+  font-size: 1.1em;
+}
+
+#status-legend {
+  margin-top: 10px;
+  margin-right: 10px;
+}
+
+#header,
+#application,
+.test-info,
+.test-actions li {
+  overflow: hidden;
+}
+
+#application {
+  margin: 10px;
+}
+
+#application iframe {
+  width: 100%;
+  height: 758px;
+}
+
+#application .popout {
+  float: right;
+}
+
+#application iframe {
+  border: none;
+}
+
+.tests li,
+.test-actions li,
+.test-it li,
+.test-it ol,
+.status-display {
+  list-style-type: none;
+}
+
+.tests,
+.test-it ol,
+.status-display {
+  margin: 0;
+  padding: 0;
+}
+
+.test-info {
+  margin-left: 1em;
+  margin-top: 0.5em;
+  border-radius: 8px 0 0 8px;
+  -webkit-border-radius: 8px 0 0 8px;
+  -moz-border-radius: 8px 0 0 8px;
+  cursor: pointer;
+}
+
+.test-info:hover .test-name {
+  text-decoration: underline;
+}
+
+.test-info .closed:before {
+  content: '\25b8\00A0';
+}
+
+.test-info .open:before {
+  content: '\25be\00A0';
+  font-weight: bold;
+}
+
+.test-it ol {
+  margin-left: 2.5em;
+}
+
+.status-display,
+.status-display li {
+  float: right;
+}
+
+.status-display li {
+  padding: 5px 10px;
+}
+
+.timer-result,
+.test-title {
+  display: inline-block;
+  margin: 0;
+  padding: 4px;
+}
+
+.test-actions .test-title,
+.test-actions .test-result {
+  display: table-cell;
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+}
+
+.test-actions {
+  display: table;
+}
+
+.test-actions li {
+  display: table-row;
+}
+
+.timer-result {
+  width: 4em;
+  padding: 0 10px;
+  text-align: right;
+  font-family: monospace;
+}
+
+.test-it pre,
+.test-actions pre {
+  clear: left;
+  color: black;
+  margin-left: 6em;
+}
+
+.test-describe {
+  padding-bottom: 0.5em;
+}
+
+.test-describe .test-describe {
+  margin: 5px 5px 10px 2em;
+}
+
+.test-actions .status-pending .test-title:before {
+  content: '\00bb\00A0';
+}
+
+.scrollpane {
+   max-height: 20em;
+   overflow: auto;
+}
+
+/** Colors */
+
+#header {
+  background-color: #F2C200;
+}
+
+#specs h2 {
+  border-top: 2px solid #BABAD1;
+}
+
+#specs h2,
+#application h2 {
+  background-color: #efefef;
+}
+
+#application {
+  border: 1px solid #BABAD1;
+}
+
+.test-describe .test-describe {
+  border-left: 1px solid #BABAD1;
+  border-right: 1px solid #BABAD1;
+  border-bottom: 1px solid #BABAD1;
+}
+
+.status-display {
+  border: 1px solid #777;
+}
+
+.status-display .status-pending,
+.status-pending .test-info {
+  background-color: #F9EEBC;
+}
+
+.status-display .status-success,
+.status-success .test-info {
+  background-color: #B1D7A1;
+}
+
+.status-display .status-failure,
+.status-failure .test-info {
+  background-color: #FF8286;
+}
+
+.status-display .status-error,
+.status-error .test-info {
+  background-color: black;
+  color: white;
+}
+
+.test-actions .status-success .test-title {
+  color: #30B30A;
+}
+
+.test-actions .status-failure .test-title {
+  color: #DF0000;
+}
+
+.test-actions .status-error .test-title {
+  color: black;
+}
+
+.test-actions .timer-result {
+  color: #888;
+}
+</style><style type="text/css">@charset "UTF-8";
+
+[ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak],
+.ng-cloak, .x-ng-cloak,
+.ng-hide {
+  display: none !important;
+}
+
+ng\:form {
+  display: block;
+}
+</style><style type="text/css">@charset "UTF-8";[ng\:cloak],[ng-cloak],[data-ng-cloak],[x-ng-cloak],.ng-cloak,.x-ng-cloak,.ng-hide{display:none !important;}ng\:form{display:block;}</style>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <title ng-bind="'copyr' | translate" class="ng-binding">Қазақстан Республикасының Электронды Үкіметі</title>
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <meta name="yandex-verification" content="cf30cc1a4a08d6a3">
+    <meta name="google-site-verification" content="PE1vh-4-7Ogz08w5Q59YV7JrBs0w-QwlbmXWG1V1eRw">
+    <meta name="google-site-verification" content="L0SsYsCOcQzUsEIARLImBE5Ufe-PIfbENp2YwSYbGaM">
+    <link rel="stylesheet" type="text/css" href="build/build.css?v=1750942321599">
+    <style>
+        noscript {
+            display: block;
+            width: 80%;
+            margin: 0 auto;
+            padding: 5rem 1rem;
+            font-family: 'Ubuntu', 'Arial';
+        }
+    </style>
+<style>@font-face {
+  font-family: 'Ubuntu';
+  src: url('build/fonts/ubuntu-r-webfont.woff') format('woff'); /*base64:skip*/
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Ubuntu';
+  src: url('build/fonts/ubuntu-ri-webfont.woff') format('woff'); /*base64:skip*/
+  font-weight: normal;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'Ubuntu';
+  src: url('build/fonts/ubuntu-b-webfont.woff') format('woff'); /*base64:skip*/
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Ubuntu';
+  src: url('build/fonts/ubuntu-bi-webfont.woff') format('woff'); /*base64:skip*/
+  font-weight: bold;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'Ubuntu-mono';
+  src:local('Ubuntu-mono');
+  src: url('build/fonts/ubuntumono-r-webfont.woff') format('woff'); /*base64:skip*/
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+    font-family: 'AV';
+    src:local('AV');
+    src: url('build/fonts/av.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+  font-family: 'Material Icons';
+  src: local('Material Icons');
+  src: url('build/fonts/star.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+</style></head>
+<body ng-class="{ 'pep': $root.$settings.isPep(), 'epir': $root.$settings.isEpir(), 'pod': $root.$settings.isPod(), 'contrast-view': $root.$settings.contrastTheme() === 'dark', 'contrast-view-light': $root.$settings.contrastTheme() === 'light' }" class="pep" style="">
+    <script type="text/javascript">
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'rest/build-info',!0);
+
+        xhr.send();
+
+        if(xhr.status == 302){
+            window.location = xhr.location;
+        }
+    </script>
+    <noscript>
+        <h1>У вас отключен JavaScript</h1>
+        Чтобы сайт заработал <a href="http://www.google.ru/support/adsense/bin/answer.py?answer=12654" target="_blank">включите JavaScript</a> и перезагрузите страницу (нажмите F5).
+        </div>
+    </noscript>
+    <div class="overlay ng-animate ng-hide" ng-show="active">
+  <div class="indikator">
+    <span class="text ng-binding" ng-bind="'waitPlease' | translate">Өтінемін, күтіңіз...</span>
+  </div>
+</div>
+    <div class="outer-wrapper-layout" ng-class="$settings.isContrast()? 'av-mode' : ''">
+    <div class="inner-wrapper-layout">
+        <header id="header-pep" ng-show="!$settings.isContrast();" class="">
+            <div id="top">
+                <div class="inner-block">
+                    <!-- ngRepeat: lang in $locales.all() --><div class="languages ng-scope" ng-repeat="lang in $locales.all()">
+                        <a href="#" ng-class="$locales.currentNoEmulate() === lang ? {'active':true} : {'active':false} " ng-click="$locales.choose(lang);" ng-bind=" ('localeShort.'+lang) | translate " class="ng-binding active">Kz</a>
+                    </div><!-- end ngRepeat: lang in $locales.all() --><div class="languages ng-scope" ng-repeat="lang in $locales.all()">
+                        <a href="#" ng-class="$locales.currentNoEmulate() === lang ? {'active':true} : {'active':false} " ng-click="$locales.choose(lang);" ng-bind=" ('localeShort.'+lang) | translate " class="ng-binding">Ru</a>
+                    </div><!-- end ngRepeat: lang in $locales.all() --><div class="languages ng-scope" ng-repeat="lang in $locales.all()">
+                        <a href="#" ng-class="$locales.currentNoEmulate() === lang ? {'active':true} : {'active':false} " ng-click="$locales.choose(lang);" ng-bind=" ('localeShort.'+lang) | translate " class="ng-binding">En</a>
+                    </div><!-- end ngRepeat: lang in $locales.all() -->
+                    <div id="top-right">
+                        <!--
+                        <div class="switch-version-links">
+                            ng-click="$settings.toggleContrast(); earTrick();"
+                            <a href="#" class="switch-version-link version-special">{{'new.eye' | translate}}</a>
+                            <a href="#" class="switch-version-link version-mobile">{{'new.mobile' | translate}}</a>
+                            <a href="#" class="switch-version-link version-normal">{{'new.normal' | translate}}</a>
+                        </div>
+                        -->
+                        <div class="userpanel">
+                            <!-- ngIf: $session.uin -->
+
+                            <!-- ngIf: !$session.uin --><div ng-if="!$session.uin" class="login-panel login-panel-guest ng-scope">
+                                <div class="login-menu">
+                                    <a href="http://idp.egov.kz/idp/login?lvl=2&amp;url=http://egov.kz/services/SR.14/?request-number=" ng-bind="'login.enter' | translate" class="ng-binding">Кіру</a>
+                                    <span class="ng-binding"> немесе </span>
+                                    <a href="https://idp.egov.kz/idp/register" ng-bind="'login.reg' | translate" class="ng-binding">Тіркелу</a>
+                                </div>
+                            </div><!-- end ngIf: !$session.uin -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="head">
+                <div class="inner-block">
+                    <div id="logo">
+                        <a href="/"><img src="build/images/logo.png"></a>
+                        <span class="slogan ng-binding">мемлекеттік қызметтер <br> және онлайн ақпарат</span>
+                    </div>
+
+                    <div id="head-right">
+                        <div class="search-call-group">
+                            <form class="header-search-form ng-pristine ng-valid" ng-submit="viewModel.pepSearch(findQuery)" name="">
+
+                                    <div class="form-item form-type-textfield form-item-query" role="search">
+                                        <input class="search-text form-text required form-autocomplete ng-pristine ng-valid monospace" type="text" placeholder="Сұрауды енгізіңіз. Мысалы: Мекенжай анықтамасы" ng-model="findQuery" name="" style="">
+                                    </div>
+                                    <input type="submit" id="edit-submit" name="" value="" class="form-submit monospace" style="">
+
+                            </form>
+                            <div class="call">
+                                <table>
+                                    <tbody><tr>
+                                        <td><div class="number"><a href="https://1414.egov.kz/"><span class="short-number">1414</span></a></div></td>
+                                        <td class="ng-binding">Бірыңғай байланыс орталығы <br><span class="ng-binding">ҚОҢЫРАУ ШАЛУ ТЕГIН</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="text-align: right; display: inline-block; float: right;" class="ng-binding">Шетелден<br><span class="ng-binding"> </span></td>
+                                        <td><div class="number ng-binding">+7 7172 906 984</div><span class="ng-binding">ҚОҢЫРАУ ШАЛУ АҚЫЛЫ</span><br><span class="ng-binding">(оператордың тарифі бойынша)</span></td>
+                                    </tr>
+                                </tbody></table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="menus">
+                <div class="inner-block">
+                    <ul>
+                        <li><a href="/cms/online-services/for_citizen?filter=services" ng-bind="'wrapper.services' | translate" class="ng-binding">Қызметтер</a></li>
+                        <li><a href="/cms/online-services/for_citizen?filter=payments" ng-bind="'wrapper.payments' | translate" class="ng-binding">Төлемдер</a></li>
+                        <li><a href="https://open.egov.kz" ng-bind="'wrapper.open_gov' | translate" target="_blank" rel="noopener noreferrer" class="ng-binding">Ашық үкімет</a></li>
+                        <li><a href="https://my.egov.kz" ng-bind="'wrapper.person_profile' | translate" class="ng-binding">ЖЕКЕ КАБИНЕТ</a></li>
+                        <li><a href="/cms/information/about/help-elektronnoe-pravitelstvo" ng-bind="'wrapper.about' | translate" class="ng-binding">Портал туралы</a></li>
+                        <li><a href="/cms/information/help/help-elektronnoe-pravitelstvo" ng-bind="'wrapper.help' | translate" class="ng-binding">КӨМЕК</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+
+        <header id="header-pep-contrast" ng-init="size=1" ng-class="{ 'second-size':$root.fontSize==2,'third-size':$root.fontSize==3 }" ng-show="$settings.isContrast();" class="ng-hide">
+            <div class="language">
+                <a class="eye" ng-click="$settings.toggleContrast(); size=1; $root.fontSize = 1; "></a>
+                <a class="contrast" ng-click="$root.$settings.toggleContrastTheme()"></a>
+                <a class="x1 selected" ng-class="{ 'selected':size==1 }" ng-click="size=1; $root.fontSize = 1; ">A</a>
+                <a class="x2" ng-class="{ 'selected':size==2 }" ng-click="size=2; $root.fontSize = 2;">A</a>
+                <a class="x3" ng-class="{ 'selected':size==3 }" ng-click="size=3; $root.fontSize = 3;">A</a>
+            </div>
+            <table>
+                <tbody>
+                <tr>
+                    <td class="logo_slogn">
+                        <a id="logo" href="/wps/myportal/index"></a>
+                        <p class="logo-slogn ng-binding" ng-bind="'wrapper.logo_slogn' | translate">МЕМЛЕКЕТТІК ҚЫЗМЕТТЕР ЖӘНЕ АҚПАРАТ ОНЛАЙН</p>
+                    </td>
+                    <td>
+                        <div class="userpanel" ng-mouseenter="enter=true" ng-mouseleave="enter=false" ng-init="enter=false">
+                            <div class="userpanel-cabinet">
+                                <li class="profile-arrow"></li>
+
+                                <!-- ngIf: $session.organization || $session.uin || $session.operator -->
+                                <!-- ngIf: !$session.organization && !$session.uin && !$session.operator --><a id="login" ng-show="enter=true" ng-hide="enter=false" ng-if="!$session.organization &amp;&amp; !$session.uin &amp;&amp; !$session.operator" class="link ng-scope" href="http://idp.egov.kz/idp/login?lvl=2&amp;url=http://egov.kz/services/SR.14/?request-number=">
+                                    <span class="text ng-binding" ng-bind="'wrapper.login' | translate">Кіру</span></a><!-- end ngIf: !$session.organization && !$session.uin && !$session.operator -->
+                                <!-- ngIf: !$session.organization && !$session.uin && !$session.operator --><a id="singUp" ng-show="enter=true" ng-hide="enter=false" ng-if="!$session.organization &amp;&amp; !$session.uin &amp;&amp; !$session.operator" class="link ng-scope" href="/wps/portal/registration">
+                                    <span class="text ng-binding" ng-bind="'wrapper.sign' | translate">Тіркелу</span></a><!-- end ngIf: !$session.organization && !$session.uin && !$session.operator -->
+                            </div>
+
+                        </div>
+
+
+                        <ul class="change-lang list-style-none">
+                            <!--<li ng-if="viewModel.indicators && ($session.uin || $session.operator || $session.organization)" class="notification-contrast" ng-mouseenter="enterNotify=true" ng-mouseleave="enterNotify=false" ng-init="enterNotify=false">-->
+                                <!--<a ng-class="{'notify-contrast-img':enterNotify==false,'notify-contrast-img-light':enterNotify==true}"></a>-->
+                                <!--<div class="indicator-arrow" ng-show="enterHistory==true"></div>-->
+                                <!--<div class="indicator-popup-window-contrast indicator-popup-window-contrast-notifications" ng-hide="enterNotify==false" ng-show="enterNotify==true">-->
+                                    <!--<div class="unread-msg-label-contrast unread-msg-label-contrast-first" ng-if="viewModel.indicators.notification.unread==0" ><a class="select-label-contrast" ng-bind="'wrapper.noRowsMsg' | translate"></a></div>-->
+                                    <!--<div class="unread-msg-label-contrast unread-msg-label-contrast-first" ng-if="viewModel.indicators.notification.unread>1" ><a class="select-label-contrast" href="{{viewModel.indicators.notification.url}}" ng-bind="('wrapper.newNotificationMsg' | translate) + ' ' + (viewModel.indicators.notification.unread)"></a></div>-->
+                                    <!--<div class="unread-msg-label-contrast" ng-if="viewModel.indicators.notification.content && $locales.current==='ru'" ng-repeat="record in viewModel.indicators.notification.content" ng-show="$index<6" ><a class="select-label-contrast" href="{{record.url}}" ng-bind="record.name.ruText"></a></div>-->
+                                    <!--<div class="unread-msg-label-contrast" ng-if="viewModel.indicators.notification.content && $locales.current==='kz'" ng-repeat="record in viewModel.indicators.notification.content" ng-show="$index<6" ><a class="select-label-contrast" href="{{record.url}}" ng-bind="record.name.kkText"></a></div>-->
+                                    <!--<div class="unread-msg-label-contrast" ng-if="viewModel.indicators.notification.content && $locales.current==='en'" ng-repeat="record in viewModel.indicators.notification.content" ng-show="$index<6" ><a class="select-label-contrast" href="{{record.url}}" ng-bind="record.name.enText"></a></div>-->
+                                <!--</div>-->
+                            <!--</li>-->
+                            <!--<li ng-if="viewModel.indicators && ($session.uin || $session.operator || $session.organization)" class="history-contrast" ng-mouseenter="enterHistory=true" ng-mouseleave="enterHistory=false" ng-init="enterHistory=false">-->
+                                <!--<a ng-class="{'history-contrast-img':enterHistory==false,'history-contrast-img-light':enterHistory==true}"></a> &lt;!&ndash;class="history-contrast-img"&ndash;&gt;-->
+                                <!--<div class="indicator-arrow" ng-show="enterHistory==true"></div>-->
+                                <!--<div class="indicator-popup-window-contrast indicator-popup-window-contrast-history" ng-hide="enterHistory==false" ng-show="enterHistory==true">-->
+                                    <!--<div class="unread-msg-label-contrast unread-msg-label-contrast-first" ng-if="viewModel.indicators.history.unread==0" ><a class="select-label-contrast" ng-bind="'wrapper.noNotifMsg' | translate"></a></div>-->
+                                    <!--<div class="unread-msg-label-contrast unread-msg-label-contrast-first" ng-if="viewModel.indicators.history.unread>1" ><a class="select-label-contrast" href="{{viewModel.indicators.history.url}}" ng-bind="('wrapper.newHistoryMsg' | translate) + ' ' + (viewModel.indicators.history.unread)"></a></div>-->
+                                    <!--<div class="unread-msg-label-contrast" ng-if="viewModel.indicators.history.content && $locales.current()==='ru'" ng-repeat="record in viewModel.indicators.history.content" ng-show="$index<6" ><a class="select-label-contrast"  href="{{record.url}}" ng-bind="record.name.ruText"></a></div>-->
+                                    <!--<div class="unread-msg-label-contrast" ng-if="viewModel.indicators.history.content && $locales.current()==='kz'" ng-repeat="record in viewModel.indicators.history.content" ng-show="$index<6" ><a class="select-label-contrast"  href="{{record.url}}" ng-bind="record.name.kkText"></a></div>-->
+                                    <!--<div class="unread-msg-label-contrast" ng-if="viewModel.indicators.history.content && $locales.current()==='en'" ng-repeat="record in viewModel.indicators.history.content" ng-show="$index<6" ><a class="select-label-contrast"  href="{{record.url}}" ng-bind="record.name.enText"></a></div>-->
+
+                                <!--</div>-->
+                            <!--</li>-->
+
+
+                            <li ng-click="$locales.choose('kz');" ng-class="{ 'active':$locales.current()==='kz' }" class="active">
+                                <a>ҚАЗ</a>
+                            </li>
+                            <li ng-click="$locales.choose('ru');" ng-class="{ 'active':$locales.current()==='ru' }">
+                                <a>РУС</a>
+                            </li>
+                            <li ng-click="$locales.choose('en');" ng-class="{ 'active':$locales.current()==='en' }">
+                                <a>ENG</a>
+                            </li>
+                        </ul>
+                        <div class="header-top">
+                            <ul class="header-top-links list-style-none">
+                                <li><a href="https://egov.kz/cms/kz/law" ng-bind="'wrapper.topMenu1' | translate" class="ng-binding">Заңнама</a></li>
+                                <li><a href="https://idp.egov.kz/idp/r?ts=ELICENSE&amp;url=http://elicense.kz" ng-bind="'wrapper.elicense' | translate" class="ng-binding">Электрондық лицензиялау</a></li>
+                                <li><a href="https://cabinet.salyk.kz/sonowebinfo/" ng-bind="'wrapper.taxpayer_cabinet' | translate" class="ng-binding">Салық төлеушінің кабинеті</a></li>
+                                <li><a href="https://open.egov.kz/" ng-bind="'wrapper.open_gov' | translate" class="ng-binding">Ашық үкімет</a></li>
+                                <li><a ng-href="http://www.adilet.gov.kz/kk/articles/atkarushylyk-zhurgizu-taraptarynyn-kabineti" ng-bind="'wrapper.debtor_creditor' | translate" target="_blank" rel="noopener noreferrer" class="ng-binding" href="http://www.adilet.gov.kz/kk/articles/atkarushylyk-zhurgizu-taraptarynyn-kabineti">Борышкер-өндіріпалушы</a></li>
+                            </ul>
+
+                        </div></td>
+                </tr>
+
+                <tr>
+                    <td class="search-td" colspan="2">
+                        <div class="call-center">
+                            <div>
+                                <span class="call-center-title ng-binding" ng-bind="'wrapper.call_center' | translate">Бірыңғай байланыс орталығы </span>
+                                <span class="call-center-phone">
+                                    <a href="https://1414.egov.kz/"><span>1414 / </span></a>8-800-080-7777</span>
+                                <span class="call-center-free ng-binding" ng-bind="'wrapper.free_call' | translate">ҚОҢЫРАУ ШАЛУ ТЕГIН</span>
+                            </div>
+                        </div>
+                        <div class="search-form">
+                            <fieldset>
+                                <div class="search-form-box">
+                                    <form ng-submit="viewModel.pepSearch(findQuery)" name="" class="ng-pristine ng-valid">
+                                        <button type="submit">&nbsp;</button>
+                                        <input type="text" id="query" ng-model="findQuery" placeholder="Портал бойынша іздеу" name="textSearch" class="ng-pristine ng-valid monospace" style="">
+                                    </form>
+                                </div>
+                                <div class="search-form-example ng-binding" ng-click="translateSearchQuery()" ng-bind="('wrapper.example' | translate) + ':'">Мысалы:</div>
+
+                            </fieldset>
+
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </header>
+        <!-- header pep -end -->
+        <!-- breadcrumbs-pep -->
+        <div id="pep-breadcrumbs">
+            <div class="fix-wrapper">
+            </div>
+        </div>
+        <!-- breadcrumbs-pep -end -->
+
+
+        <div class="spacing-wrapper">
+
+            <h2 class="service-maintitle ng-binding" ng-bind="$root.$router.getActiveLocation().get().title | translate">Борышкерлер тізілімі және шет елге шығуға тыйым салынулар бойынша тексеру</h2>
+
+            <!-- ngIf: $settings.isEnabled() && !$session.uin -->
+
+            <access-denied-info access-denied-code="$session.accessDeniedCode" availability="$session.availability" locale="$locales.current()" class="ng-isolate-scope"><!-- ngIf: accessDeniedCode -->
+<!-- ngIf: availability && availability.available === false && !accessDeniedCode -->
+</access-denied-info>
+
+            <!--добавлено условие || !$session.uin - для возможности анонимного доступа к некоторым услугам-->
+            <!-- ngIf: $session.uin && (($session.individual && $session.individual.valid) || ($session.organization && $session.organization.valid)) || !$session.uin --><div ng-if="$session.uin &amp;&amp; (($session.individual &amp;&amp; $session.individual.valid) || ($session.organization &amp;&amp; $session.organization.valid)) || !$session.uin" ng-transclude="" class="ng-scope">
+        <!-- uiView: undefined --><ui-view class="ng-scope"><div ng-controller="controller_sr_14" class="ng-scope">
+    <declaration><div class="pod-wrapper">
+    <!-- ngIf: $root.$settings.isPod() -->
+</div>
+
+<div class="pep-wrapper">
+    <!-- ngIf: $root.$settings.isPep() --><div class="content-wrapper content-steps ng-scope" ng-init="$modal = $root.$modal" data-ng-if="$root.$settings.isPep()">
+        <header class="content-header">
+            <table>
+                <tbody><!-- ngIf: header.getCurrentRole() !== 'UNKNOWN' -->
+                <!-- ngIf: header.getCurrentRole() === 'APPROVAL' -->
+            </tbody></table>
+        </header>
+
+        <div data-ng-class="{ 'step-line-border' : $root.$settings.contrastTheme() === 'dark' || $root.$settings.contrastTheme() === 'light'}">
+            <div data-ng-class="{ 'help-line-border' : $root.$settings.contrastTheme() === 'dark' || $root.$settings.contrastTheme() === 'light',
+         'help-line-border-none': helpHide || (($settings.isPep())? false : $declaration.currentStep().id == 'sign')}">
+                <div class="steps-nav">
+
+                    <table class="steps-table">
+                        <tbody><tr>
+                            <!-- ngIf: $declaration.totalSteps > $declaration.maxSteps && $declaration.getCurrentPosition() > 0 -->
+                            <!-- ngRepeat: step in $declaration.getSteps() --><td ng-class="{ 'active-step': $declaration.currentStep().index==step.index, 'available-step': $declaration.isStepAvailable(step) }" ng-repeat="step in $declaration.getSteps()" ng-click="$declaration.isStepAvailable(step) &amp;&amp; $declaration.goStep(step.id)" class="ng-scope">
+                                <!-- ngIf: $declaration.showStepRequired(step.index) --><div class="step-inner-element ng-scope" ng-if="$declaration.showStepRequired(step.index)">
+                                    <div class="marker">
+                                        <div class="tail"></div>
+                                    </div>
+                                    <strong class="step-num ng-binding" ng-class="{ 'step-num-inverted' : $declaration.currentStep().index==step.index }" ng-bind="('declaration.step.step' | translate) + ' ' + (step.index + 1)">ҚАДАМ 1</strong>
+                                    <div class="step-title">
+                                        <!-- ngIf: !step.name --><span ng-if="!step.name" ng-bind="'(' +(('declaration.step.' + step.id) | translate) + ')'" class="ng-scope ng-binding">(Деректерді енгізу)</span><!-- end ngIf: !step.name -->
+                                        <!-- ngIf: step.name -->
+                                    </div>
+                                </div><!-- end ngIf: $declaration.showStepRequired(step.index) -->
+                            </td><!-- end ngRepeat: step in $declaration.getSteps() --><td ng-class="{ 'active-step': $declaration.currentStep().index==step.index, 'available-step': $declaration.isStepAvailable(step) }" ng-repeat="step in $declaration.getSteps()" ng-click="$declaration.isStepAvailable(step) &amp;&amp; $declaration.goStep(step.id)" class="ng-scope active-step available-step">
+                                <!-- ngIf: $declaration.showStepRequired(step.index) --><div class="step-inner-element ng-scope" ng-if="$declaration.showStepRequired(step.index)">
+                                    <div class="marker">
+                                        <div class="tail"></div>
+                                    </div>
+                                    <strong class="step-num ng-binding step-num-inverted" ng-class="{ 'step-num-inverted' : $declaration.currentStep().index==step.index }" ng-bind="('declaration.step.step' | translate) + ' ' + (step.index + 1)">ҚАДАМ 2</strong>
+                                    <div class="step-title">
+                                        <!-- ngIf: !step.name --><span ng-if="!step.name" ng-bind="'(' +(('declaration.step.' + step.id) | translate) + ')'" class="ng-scope ng-binding">(Мәртебе)</span><!-- end ngIf: !step.name -->
+                                        <!-- ngIf: step.name -->
+                                    </div>
+                                </div><!-- end ngIf: $declaration.showStepRequired(step.index) -->
+                            </td><!-- end ngRepeat: step in $declaration.getSteps() -->
+                            <!-- ngIf: $declaration.totalSteps > $declaration.maxSteps  && $declaration.getCurrentPosition() < $declaration.totalSteps - $declaration.maxSteps -->
+                        </tr>
+                    </tbody></table>
+
+                </div>
+
+                <aside class="content-help content-help-border" ng-class="$information.lastActive() != null &amp;&amp; $information.lastActive() != '' ? 'content-help-border' : ''" ng-hide="helpHide || (($settings.isPep())? false : $declaration.currentStep().id == 'sign')">
+                    <!-- ngIf: $egovChoiceSignService.needRateService() -->
+                    <!-- ngIf: $declaration.vote.voteState == 'AVAILABLE' && (!!$declaration.state.completed) -->
+                    
+                    <div ng-bind-html="$information.lastActive()" class="help-text ng-binding">
+    <div class="title ng-binding">Қызмет көрсету туралы ақпарат</div>
+    
+    <article>
+        <p class="ng-binding">Қызмет Шетелге шығу мүмкіндігі шектелген, борышкерлер тізілім және Атқарылатын өндірістер бойынша борышкерлер тізілімі шетелге шығуға шектеудің бар болуын тексеруді іске асыраға мүмкіндік береді</p>
+    </article>
+</div>
+                    <div class="help-hide ng-hide" ng-click="helpHide = !helpHide" ng-show="$settings.isPod()"><span></span></div>
+
+                </aside>
+                <div class="help-show ng-hide kz" ng-class="$root.$locales.current()" ng-show="$settings.isPod() &amp;&amp; helpHide &amp;&amp; $declaration.currentStep().id != 'sign'" ng-click="helpHide = !helpHide"></div>
+
+                <section class="main-content help-visible" ng-class="{'help-hidden' : helpHide, 'help-visible': !helpHide}">
+
+                    <article class="content-article" ng-show="$declaration.isReady()" ng-transclude="">
+
+        <!-- ngInclude: undefined --><ng-include src="'app/declarations/_information/about-declaration.html'" class="ng-scope"></ng-include>
+
+        <div id="input" class="ng-isolate-scope step-element">
+    <div class="step-body ng-animate ng-hide" ng-show="$declaration.currentStep().id == step.id">
+        <div ng-transclude="">
+            <div class="input-wrapper ng-scope">
+                <div class="uin ng-isolate-scope" ng-init="$keyboard = $root.$keyboard" id="uin" type="iin" uin="$declaration.model.uin" uin-status="DEAD, MISSING, ABSENT, DISAPPEARED, EXCLUDED, REMOVED, NON_RESIDENT" required="required">
+
+    <div ng-show="!viewModel.search" class="">
+
+        <div class="input-wrapper">
+
+            <!-- ngIf: !hideTitle --><label ng-init="uid = uid()" for="" class="label-type ng-scope ng-binding" ng-if="!hideTitle"><!-- ngIf: !notRequired --><span ng-if="!notRequired" class="ng-scope">*</span><!-- end ngIf: !notRequired -->ЖСН енгізіңіз</label><!-- end ngIf: !hideTitle -->
+
+
+            <div ng-show="!hideSearch &amp;&amp; type == 'bin'" class="link-forgot ng-hide">
+                <a class="link-extended" href="" ng-transclude="" ng-click="viewModel.search = true; uin = ''"><span class="ng-scope ng-binding">ЖСН-ді білмейсіз бе?</span></a>
+            </div>
+
+            <div class="ctrl-inner-wrapper data-is-ok" ng-class="{ 'data-invalid' : viewModel.haveErrors, 'data-invalid-orange': viewModel.haveWarnings, 'data-is-ok': viewModel.info }">
+
+                <div class="validation-message-new ng-isolate-scope" ng-init="$keyboard = $root.$keyboard" prefix="uin" errors="viewModel.errors" warnings="viewModel.warnings">
+
+    <div ng-transclude="">
+                    <input ng-model="viewModel.inputModel" class="input-type kb_small ng-scope ng-valid monospace ng-dirty" type="text" maxlength="12" id="" ng-focus="viewModel.uinFocus = true" ng-blur="viewModel.uinFocus = false" controller="inputController" ng-disabled="disableflag" name="" style=""> 
+                </div>
+    <a href="" class="to-bottom inline-validation-message ng-hide" ng-click="messageMinified = !messageMinified" ng-class="{
+            'validation-message': inputFocused,
+            'inline-validation-message': !inputFocused,
+            'to-top': inputFocused &amp;&amp; kbToBottoms > 0,
+            'to-bottom': !inputFocused || kbToBottoms == 0,
+            'notify-type': warning,
+            'error-type': error
+       }" ng-show="!messageMinified &amp;&amp; ( warning || error )">
+        <div ng-show="!inputFocused || kbToBottoms == 0" class="tail"></div>
+        <div class="message-text ng-binding"></div>
+        <div ng-show="inputFocused &amp;&amp; kbToBottoms > 0" class="tail ng-hide"></div>
+    </a>
+
+</div>
+
+                <div class="service-common" ng-show="viewModel.info">
+                    <div class="quick-search" data-ng-hide="viewModel.haveErrors || hideInfo">
+                        <!-- ngIf: $locales.current() === 'ru' -->
+                        <!-- ngIf: $locales.current() === 'kz' --><div ng-if="$locales.current() === 'kz'" class="ng-scope">
+                            <div class="ng-binding"> Ч. ХРИСТОФОР </div>
+                            <div class="ng-binding">  </div>
+                        </div><!-- end ngIf: $locales.current() === 'kz' -->
+                        <!-- ngIf: $locales.current() === 'en' -->
+                        <div class="tail"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
+        <div ng-show="viewModel.errors.noConnection" class="ng-hide">
+            <input type="button" class="button-type button-subaction monospace" ng-click="reconnect()" value="Іздеуді қайталау" style="">
+        </div>
+    </div>
+
+    <div ng-init="$keyboard = $root.$keyboard" ng-show="viewModel.search" bin="uin" cancel="viewModel.search = false; uin = ''" class="ng-isolate-scope ng-hide">
+
+    <div class="advSearch" ng-show="!viewModel.results.list" ng-class="{ 'data-invalid' : viewModel.errors.emptyFilter }">
+
+        <div class="input-wrapper" ng-show="!viewModel.auxFields" ng-class="{ 'data-invalid' : viewModel.errors.name.minLen }">
+            <label for="name" class="label-type ng-binding">Ұйым атауы</label>
+
+            <div class="validation-message-new ng-isolate-scope" ng-init="$keyboard = $root.$keyboard" prefix="uin" errors="viewModel.errors.name">
+
+    <div ng-transclude="">
+                <input class="input-type ng-scope ng-pristine ng-valid monospace" type="text" maxlength="255" id="name" ng-model="viewModel.filter.name" controller="nameController" autocomplete="off" name="" style=""> 
+            </div>
+    <a href="" class="to-bottom ng-hide inline-validation-message" ng-click="messageMinified = !messageMinified" ng-class="{
+            'validation-message': inputFocused,
+            'inline-validation-message': !inputFocused,
+            'to-top': inputFocused &amp;&amp; kbToBottoms > 0,
+            'to-bottom': !inputFocused || kbToBottoms == 0,
+            'notify-type': warning,
+            'error-type': error
+       }" ng-show="!messageMinified &amp;&amp; ( warning || error )">
+        <div ng-show="!inputFocused || kbToBottoms == 0" class="tail"></div>
+        <div class="message-text ng-binding"></div>
+        <div ng-show="inputFocused &amp;&amp; kbToBottoms > 0" class="tail ng-hide"></div>
+    </a>
+
+</div>
+
+        </div>
+
+        <div class="auxFields ng-hide" ng-show="viewModel.auxFields">
+
+            <div class="input-wrapper" ng-class="{ 'data-invalid' : viewModel.errors.name.minLen }">
+                <label for="name" class="label-type ng-binding">Ұйым атауы</label>
+
+                <div class="validation-message-new ng-isolate-scope" ng-init="$keyboard = $root.$keyboard" prefix="uin" errors="viewModel.errors.name">
+
+    <div ng-transclude="">
+                    <input class="input-type ng-scope ng-pristine ng-valid monospace" type="text" maxlength="255" id="auxname" ng-model="viewModel.filter.name" controller="auxnameController" autocomplete="off" name="" style=""> 
+                </div>
+    <a href="" class="to-bottom ng-hide inline-validation-message" ng-click="messageMinified = !messageMinified" ng-class="{
+            'validation-message': inputFocused,
+            'inline-validation-message': !inputFocused,
+            'to-top': inputFocused &amp;&amp; kbToBottoms > 0,
+            'to-bottom': !inputFocused || kbToBottoms == 0,
+            'notify-type': warning,
+            'error-type': error
+       }" ng-show="!messageMinified &amp;&amp; ( warning || error )">
+        <div ng-show="!inputFocused || kbToBottoms == 0" class="tail"></div>
+        <div class="message-text ng-binding"></div>
+        <div ng-show="inputFocused &amp;&amp; kbToBottoms > 0" class="tail ng-hide"></div>
+    </a>
+
+</div>
+            </div>
+
+            <div>
+                <label class="label-type ng-binding">Ұйым нысаны</label>
+                <div ng-init="$modal = $root.$modal" data-ng-title="binField.orgType" values="viewModel.orgTypes" ng-click="orgTypes()" selected="selected" class="ng-isolate-scope">
+    <div class="input-wrapper">
+        <div class="select-type">
+            <div class="input-type" ng-click="showChoices(); "><span class="ng-binding">--</span></div>
+        </div>
+    </div>
+    
+
+</div>
+            </div>
+
+            <div>
+                <label class="label-type ng-binding">Құқықтық нысаны</label>
+                <div ng-init="$modal = $root.$modal" data-ng-title="binField.orgType" values="viewModel.licTypes" ng-click="licTypes()" selected="selected" class="ng-isolate-scope">
+    <div class="input-wrapper">
+        <div class="select-type">
+            <div class="input-type" ng-click="showChoices(); "><span class="ng-binding">--</span></div>
+        </div>
+    </div>
+    
+
+</div>
+            </div>
+
+            <div class="input-wrapper" ng-class="{ 'data-invalid' : viewModel.errors.flowner.minLen }">
+                <label for="flowner" class="label-type ng-binding">Құрылтайшы А.Т.Ә. (жеке тұлға)</label>
+
+                <div class="validation-message-new ng-isolate-scope" ng-init="$keyboard = $root.$keyboard" prefix="uin" errors="viewModel.errors.flowner">
+
+    <div ng-transclude="">
+                    <input class="input-type ng-scope ng-pristine ng-valid monospace" type="text" maxlength="255" id="flowner" ng-model="viewModel.filter.flowner" controller="flownerController" autocomplete="off" name="" style=""> 
+                </div>
+    <a href="" class="to-bottom ng-hide inline-validation-message" ng-click="messageMinified = !messageMinified" ng-class="{
+            'validation-message': inputFocused,
+            'inline-validation-message': !inputFocused,
+            'to-top': inputFocused &amp;&amp; kbToBottoms > 0,
+            'to-bottom': !inputFocused || kbToBottoms == 0,
+            'notify-type': warning,
+            'error-type': error
+       }" ng-show="!messageMinified &amp;&amp; ( warning || error )">
+        <div ng-show="!inputFocused || kbToBottoms == 0" class="tail"></div>
+        <div class="message-text ng-binding"></div>
+        <div ng-show="inputFocused &amp;&amp; kbToBottoms > 0" class="tail ng-hide"></div>
+    </a>
+
+</div>
+            </div>
+
+            <div class="input-wrapper" ng-class="{ 'data-invalid' : viewModel.errors.ulowner.minLen }">
+                <label for="ulowner" class="label-type ng-binding">Құрылтайшы А.Т.Ә. (заңды тұлға)</label>
+                <div class="validation-message-new ng-isolate-scope" ng-init="$keyboard = $root.$keyboard" prefix="uin" errors="viewModel.errors.ulowner">
+
+    <div ng-transclude="">
+                    <input class="input-type ng-scope ng-pristine ng-valid monospace" type="text" maxlength="255" id="ulowner" ng-model="viewModel.filter.ulowner" controller="ulownerController" autocomplete="off" name="" style=""> 
+                </div>
+    <a href="" class="to-bottom ng-hide inline-validation-message" ng-click="messageMinified = !messageMinified" ng-class="{
+            'validation-message': inputFocused,
+            'inline-validation-message': !inputFocused,
+            'to-top': inputFocused &amp;&amp; kbToBottoms > 0,
+            'to-bottom': !inputFocused || kbToBottoms == 0,
+            'notify-type': warning,
+            'error-type': error
+       }" ng-show="!messageMinified &amp;&amp; ( warning || error )">
+        <div ng-show="!inputFocused || kbToBottoms == 0" class="tail"></div>
+        <div class="message-text ng-binding"></div>
+        <div ng-show="inputFocused &amp;&amp; kbToBottoms > 0" class="tail ng-hide"></div>
+    </a>
+
+</div>
+            </div>
+
+        </div>
+
+
+        <!-- ngIf: viewModel.errors.emptyFilter -->
+
+
+        <div class="list-togglers">
+            <a class="adv-search link-extended" href="" ng-transclude="" ng-show="!viewModel.auxFields" ng-click="viewModel.auxFields=true"><span class="ng-scope ng-binding">Қосымша параметрлер</span></a>
+            <a class="adv-search link-extended ng-hide" href="" ng-transclude="" ng-click="viewModel.auxFields=false" ng-show="viewModel.auxFields"><span class="ng-scope ng-binding">Қосымша параметрлерді жасыру</span></a>
+        </div>
+
+    </div>
+
+    <!-- ngIf: viewModel.results.list -->
+
+    <div class="actions-pad actions-pad-padding-bottom-fix">
+        <table>
+            <tbody><tr>
+                <td class="td-left">
+                    <button id="returnButton" class="button-type button-subaction ng-binding" ng-click="clear()">← БСН бойынша іздеуге қайту</button>
+                </td>
+                <td class="td-right">
+                    <button id="searchButton" class="button-type button-action ng-binding" ng-click="onSearch()">Іздеу</button>
+                </td>
+            </tr>
+        </tbody></table>
+    </div>
+
+</div>
+
+</div>
+                <button class="button-type button-action btn-md next-button ng-binding" ng-click="sendAppRequest()" ng-disabled="$declaration.dirtyForm">
+                    Ары қарай
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div id="status" class="ng-isolate-scope step-element">
+    <div class="step-body" ng-show="$declaration.currentStep().id == step.id">
+        <div ng-transclude="">
+            <div class="wrapper f-fix ng-scope">
+
+                <h2 class="ng-binding">Іздеу нәтижесі</h2>
+
+                <p ng-show="!$uin.isBin($declaration.model.uin) &amp;&amp; $declaration.sr14Response.rows.length > 0" class="ng-binding ng-hide">
+                    <!--{{$declaration.model.uinStatus.name.firstName}}-->
+<!--                    {{$declaration.model.uinStatus.name.middleName}}-->
+                    
+                </p>
+
+                <p ng-show="$declaration.sr14Response.rows.length > 0" class="ng-binding ng-hide">ЖСН/БСН: 060923501812</p>
+
+<!--                <p ng-show="$declaration.sr14Response.rows.length > 0">
+                    {{$declaration.sr14Response.rows[0].debtor}}
+
+                </p>-->
+
+                <!-- ngIf: $uin.isBin($declaration.model.uin) && $declaration.sr14Response.rows.length > 0 -->
+
+
+
+
+                <!-- выезд может быть запрещен только физическому лицу -->
+                <p ng-show="!noData&amp;&amp;!isBanned&amp;&amp;(!$uin.isBin($declaration.model.uin))" class="ng-binding ng-hide">
+                    Шығу:  <span style="color:green" class="ng-binding">рұқсат етілген</span></p>
+
+                <p ng-show="isBanned &amp;&amp; !$uin.isBin($declaration.model.uin)" class="ng-binding ng-hide">
+                    Шығу:  <span style="color:red" class="ng-binding">тыйым салынған</span></p>
+
+                <p ng-show="noData" class="ng-binding">Берілген ЖСН/БСН бойынша АӨО ААЖ-де деректер жоқ. Көрсетілген тұлға атқарушы өндіріс(тер) бойынша борышқор болмады.</p>
+
+                <!-- ngRepeat: page in pages -->
+
+                <div class="pages ng-hide" ng-show="pages.length > 1">
+                    <!--<a href="#" ng-click="pagesGoPrev()">&lt;</a>-->
+                    <!-- ngRepeat: page in pages -->
+                    <!--<a href="#" ng-click="pagesGoNext()">&gt;</a>-->
+                </div>
+
+                <button class="button-type button-action button-newreq ng-binding" style="width: 100% !important;" ng-click="goInputStep()">
+                    Жаңа сұрату
+                </button>
+
+
+            </div>
+        </div>
+    </div>
+</div>
+
+    </article>
+
+                </section>
+                <div class="clr"></div>
+            </div>
+        </div>
+        <div class="clr"></div>
+    </div><!-- end ngIf: $root.$settings.isPep() -->
+</div>
+
+<div class="epir-wrapper">
+    <!-- ngIf: $root.$settings.isEpir() -->
+</div></declaration>
+</div>
+</ui-view>
+    </div><!-- end ngIf: $session.uin && (($session.individual && $session.individual.valid) || ($session.organization && $session.organization.valid)) || !$session.uin -->
+
+        </div>
+        <div class="footer-spacer"></div>
+    </div>
+    <!-- footer -->
+    <footer id="footer-pep" ng-show="!$settings.isContrast();" class="">
+        <div id="foot">
+            <div class="inner-block">
+                <div class="foot-left">
+                    <div class="foot-menu">
+                        <h4 class="ng-binding">Сыртқы ресурстар</h4>
+                        <ul>
+                            <li><a href="https://idp.egov.kz/idp/r?ts=ELICENSE&amp;url=http://elicense.kz" class="ng-binding">Электрондық лицензиялау</a></li>
+                            <li><a href="https://idp.egov.kz/idp/r?ts=KNP&amp;url=https://cabinet.salyk.kz/sonowebinfo/content/knpPages/news/personal-news.faces" class="ng-binding">Салық төлеушінің кабинеті</a></li>
+                            <li><a href="https://idp.egov.kz/idp/r?ts=VS&amp;url=http://office.sud.kz/redirect.xhtml?t=r3" class="ng-binding">Сот кабинеті</a></li>
+                            <li><a href="https://www.adilet.gov.kz/ru/articles/kabinet-storon-ispolnitelnogo-proizvodstva" target="_blank" rel="noopener noreferrer" class="ng-binding">Борышкер-өндіріпалушы</a></li>
+                            <li><a href="https://calendar.egov.kz/ru" target="_blank" rel="noopener noreferrer" class="ng-binding">Іс-шаралар күнтізбесі</a></li>
+                        </ul>
+                    </div>
+                    <div class="foot-menu without-title">
+                        <ul>
+                            <li><a href="https://kyzmet.gov.kz/ru" target="_blank" rel="noopener noreferrer" class="ng-binding">Жемқорлыққа қарсы шаралар</a></li>
+                            <li><a href="/cms/services/online_admission" class="ng-binding">Бірінші басшыларға қабылдауға жазылу</a></li>
+                            <li><a href="/cms/information/state_agencies/gos_organi" class="ng-binding">ҚР мемлекеттік органдары</a></li>
+                        </ul>
+                    </div>
+                    <div class="foot-menu foot-menu-gray without-title">
+                        <ul>
+                            <li>
+                                <a href="/cms/ru/law" class="ng-binding">Заңнама</a></li>
+                            <li><a href="/cms/ru/articles/Politika-konfidencialnosti" class="ng-binding">Құпиялылық саясаты</a></li>
+                            <li><a href="https://1414.egov.kz/ru" target="_blank" rel="noopener noreferrer" class="ng-binding">Кері байланыс</a></li>
+                            <li><a href="/cms/ru/sitemap" class="ng-binding">Сайт картасы</a></li>
+                        </ul>
+                    </div>
+                    <div class="foot-menu">
+                        <h4 class="ng-binding">Азаматтарға арналған үкімет</h4>
+                        <ul>
+                            <li><a href="/cms/services/psc_bron" class="ng-binding">Кезекті брондау</a></li>
+                            <li><a href="https://gov4c.kz/kk/bajlanys/bajlanystar" target="_blank" rel="noopener noreferrer" class="ng-binding">Байланыс ақпараттары</a></li>
+                            <li><a href="/cms/psc-services" class="ng-binding">Қызметтерінің тізімі</a></li>
+                        </ul>
+                    </div><!--
+                    <div class="foot-menu foot-menu-hits">
+                        <h4>{{'new.numbers' | translate}}</h4>
+                        <p class="foot-hits">2 560</p>
+                        <span>{{'new.users' | translate}} <br>{{'new.portal' | translate}}</span>
+                    </div>
+                    -->
+                </div>
+                <div class="foot-right">
+                    <h4 class="ng-binding">Әлеуметтік желілер</h4>
+                    <ul class="social">
+                        <li><a class="fb" title="Facebook" href="https://www.facebook.com/egovkz" target="_blank" rel="noopener noreferrer"></a></li>
+                        <li><a class="tw" title="Twitter" href="https://twitter.com/egovkz" target="_blank" rel="noopener noreferrer"></a></li>
+                        <li><a class="vk" title="VK" href="https://vk.com/egovkz" target="_blank" rel="noopener noreferrer"></a></li>
+                    </ul>
+                    <p>E-mail: <a href="mailto:egov@nitec.kz">egov@nitec.kz</a></p>
+                    <div class="error-send" title="Қатені байқадыңыз ба?">
+                        <h4 class="ng-binding">Қатені байқадыңыз ба?</h4>
+                        <p class="ng-binding">Белгілеп, үстінен басыңыз.<span> Ctrl+Enter</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="copyright">
+            <div class="inner-block">
+                <div class="copyright-left ng-binding">© ҚАЗАҚСТАН РЕСПУБЛИКАСЫНЫҢ ЭЛЕКТРОНДЫҚ ҮКІМЕТІ</div>
+            </div>
+        </div>
+    </footer>
+
+    <footer id="footer-pep-contrast" ng-class="{ 'second-size':size==2,'third-size':size==3 }" ng-show="$settings.isContrast();" class="ng-hide">
+
+        <div class="copyrights">
+            <table>
+                <tbody>
+                <tr>
+                    <td class="egov-footer-image"></td>
+                    <td class="egov-footer-text ng-binding" ng-bind="'wrapper.full_name' | translate">© ҚАЗАҚСТАН РЕСПУБЛИКАСЫНЫҢ ЭЛЕКТРОНДЫҚ ҮКІМЕТІ</td>
+                </tr>
+                </tbody>
+            </table>
+
+            <ul>
+                <li><a href="/wps/portal/Content?contentPath=/egovcontent/basic&amp;lang=kz" ng-bind="'wrapper.about' | translate" class="ng-binding">Портал туралы</a></li>
+                <li><a href="/wps/portal/sitemapEgov?lang=kz" ng-bind="'wrapper.site_map' | translate" class="ng-binding">Сайт картасы</a></li>
+                <li><a href="https://1414.egov.kz/" ng-bind="'wrapper.feedback' | translate" class="ng-binding">Кері байланыс</a></li>
+            </ul>
+        </div>
+
+        <div class="social-icons">
+            <table class="social-icons-table"><tbody>
+            <tr>
+                <td><a alt="ВКонтакте" title="ВКонтакте" target="_blank" rel="noopener noreferrer" href="https://vk.com/egovkz" class="ico-vk"></a></td>
+                <td><a alt="twitter" title="twitter" target="_blank" rel="noopener noreferrer" href="https://twitter.com/egovkz" class="ico-tw"></a></td>
+                <td><a alt="facebook" title="facebook" target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/egovkz" class="ico-fb"></a></td>
+            </tr>
+            <tr><td><a alt="Мой Мир" title="Мой Мир" target="_blank" rel="noopener noreferrer" href="https://my.mail.ru/mail/egovkz/" class="ico-mr"></a></td>
+                <td><a alt="You Vision" title="You Vision" target="_blank" rel="noopener noreferrer" href="https://egov.yvision.kz" class="ico-yv"></a></td>
+                <td><a alt="google+" title="google+" target="_blank" rel="noopener noreferrer" href="https://plus.google.com/108811493237568199809/posts" class="ico-google"></a></td>
+            </tr>
+
+            </tbody></table>
+        </div>
+        <div class="post-error">
+            <p><b ng-bind="'wrapper.find_mistake' | translate" class="ng-binding">Қатені байқадыңыз ба?</b> <br><span ng-bind="'wrapper.pick_out' | translate" class="ng-binding">Белгілеп, үстінен басыңыз.</span></p>
+        </div>
+
+
+
+    </footer>
+    <!-- footer -end -->
+    <!-- ngIf: $settings.isEnabled() -->
+    <!--Openstat-->
+    <script type="text/javascript">
+        var openstat = { counter: 2348490, image: 5083, color: "258559", next: openstat, track_links: "all" };
+        (function (d, t, p) {
+            var j = d.createElement(t); j.async = true; j.type = "text/javascript";
+            j.src = ("https:" == p ? "https:" : "http:") + "//openstat.net/cnt.js";
+            var s = d.getElementsByTagName(t)[0]; s.parentNode.insertBefore(j, s);
+        })(document, "script", document.location.protocol);
+    </script>
+    <!--/Openstat-->
+
+    <script type="text/javascript">
+<!--
+    var _zero_kz_ = _zero_kz_ || [];
+    _zero_kz_.push(["id", 60995]);
+    _zero_kz_.push(["type", 1]);
+
+    (function () {
+        var a = document.getElementsByTagName("script")[0],
+                s = document.createElement("script");
+        s.type = "text/javascript";
+        s.async = true;
+        s.src = (document.location.protocol == "https:" ? "https:" : "http:")
+        + "//c.zero.kz/z.js";
+        a.parentNode.insertBefore(s, a);
+    })(); //-->
+    </script>
+
+    <script type="text/javascript">
+        var $gotop = $('.gotop').toggle($(document).scrollTop() > 130)
+        $gotop.bind("click", function() {
+            $(document).scrollTop(0);
+            return false;
+        })
+        $(document).bind({
+            "click": function(e) {
+                !$(e.target).closest('.userpanel-cabinet').length && $('.lk_in').fadeOut();
+            },
+            "scroll": function() {
+                $gotop.toggle($(document).scrollTop() > 130)
+            }
+        });
+    </script>
+
+    <!-- ngIf: $root.$error.isError() -->
+</div>
+	<mock-menu class="ng-isolate-scope"><!-- ngIf: $mockService.getIsLoaded() === true -->
+
+</mock-menu>
+
+<script src="build/build.js?v=1750942321599"></script>
+    <script>
+    (function() {
+        var buildInfo = document.getElementsByTagName('html')[0].getAttribute('build');
+        var validCache = (localStorage.build === buildInfo);
+        function b() {
+            var a = document.createElement("style");
+            a.rel = "stylesheet";
+            document.head.appendChild(a);
+            a.textContent = localStorage.fonts;
+        };
+
+        try {
+            if (localStorage.fonts && validCache) return b();
+            localStorage.build = buildInfo;
+            var a = new XMLHttpRequest;
+            a.open("GET", "build/fonts/fonts.css", !0);
+            a.onload = function() {
+               200 <= a.status && 400 > a.status && (localStorage.fonts = a.responseText, b());
+            };
+            a.send();
+        } catch (c) {
+            console.error(c);
+            localStorage.removeItem('fonts');
+        }
+    })();
+    </script>
+    <script type="text/javascript">
+      if(location.hostname == "dev.pod.egov.kz" || location.hostname == "localhost"){
+            document.write('<script src="http://dev.pod.egov.kz/static-resources/static-config.js" type="text/javascript"><\/script>');
+        }else{
+            document.write('<script src="/services/static-resources/static-config.js"><\/script>');
+        }
+    </script><script src="/services/static-resources/static-config.js"></script>
+    <script src="http://egov.kz/services/egov-js/common.js"></script>
+
+
+
+<div ng-show="$root.$modal.isDisplayed(name)" transclude-context="" class="popup-wrapper centerbox mask ng-hide" name="vote" data-ng-title="information.vote" style="z-index: 10;">
+
+    <div class="popup-type">
+        <div class="popup-inner">
+            <header class="popup-header ng-binding" ng-bind="(ngTitle || title) | translate">Қызметті бағалауыңызды өтінеміз </header>
+            <div ng-class="{ 'popup-container' : noscroll === false }" egov-window-height="" class="ng-scope popup-container" style="max-height: 1020px;">
+                <article class="popup-content" ng-transclude="">
+                        <div class="vote-pad ng-isolate-scope" keyboard="big">
+    <!-- ngIf: !isVoted --><div data-ng-if="!isVoted" class="ng-scope">
+        <figure class="vote-up" data-ng-click="voteUp(); sendVoteResult();">
+            <div></div>
+            <figcaption><span class="link-extended"><span class="ng-binding">Ұнап тұр</span></span></figcaption>
+        </figure>
+        <figure class="vote-down" data-ng-click="voteDown()">
+            <div></div>
+            <figcaption><span class="link-extended"><span class="ng-binding">Ұнамады</span></span></figcaption>
+        </figure>
+    </div><!-- end ngIf: !isVoted -->
+
+    <!-- ngIf: isVoted -->
+    
+
+</div>
+                    </article>
+            </div>
+
+            <footer class="actions-pad">
+                <div class="left-buttons" transclude-for="modal-left-buttons">
+
+                </div>
+                <div class="right-buttons" transclude-for="modal-right-buttons">
+
+                </div>
+                <div class="clr"></div>
+            </footer>
+
+            <div data-ng-hide="hideButtonClose" class="closer" ng-click="$root.$modal.hide(name)"></div>
+        </div>
+    </div>
+    <div class="mask-overlay" ng-click="closeModal()"></div>
+</div><div ng-show="$root.$modal.isDisplayed(name)" transclude-context="" class="popup-wrapper centerbox mask ng-hide" name="gi9emtbp3v4x0so5rjl4591kbwlzx6sf" data-ng-title="binField.orgType" priority="1" noscroll="true" style="z-index: 101;">
+
+    <div class="popup-type">
+        <div class="popup-inner">
+            <header class="popup-header ng-binding" ng-bind="(ngTitle || title) | translate">Ұйым формасы </header>
+            <div ng-class="{ 'popup-container' : noscroll === false }" egov-window-height="" class="ng-scope" style="max-height: 1020px;">
+                <article class="popup-content" ng-transclude="">
+        <div class="input-wrapper ng-scope" ng-hide="chooseModel.calculating">
+            <div class="select-type">
+                <!-- ngIf: chooseModel.keys.length >= 10 -->
+                <div class="select-list noselect">
+
+                    <!-- ngIf: !$settings.isPod() --><div ng-if="!$settings.isPod()" class="list-wrapper choose-scroll ng-scope" clipbox="">
+                        <ul>
+                            <!-- ngRepeat: key in chooseModel.all --><li clip="" ng-repeat="key in chooseModel.all" ng-class="{ active: selected == key}" ng-click="chooseModel.select(key)" ng-bind="chooseModel.value(key)" class="ng-scope ng-binding active">--</li><!-- end ngRepeat: key in chooseModel.all -->
+                        </ul>
+                    </div><!-- end ngIf: !$settings.isPod() -->
+                    <!-- ngIf: $settings.isPod() -->
+
+                </div>
+            </div>
+        </div>
+
+    </article>
+            </div>
+
+            <footer class="actions-pad">
+                <div class="left-buttons" transclude-for="modal-left-buttons">
+
+                </div>
+                <div class="right-buttons" transclude-for="modal-right-buttons">
+
+                </div>
+                <div class="clr"></div>
+            </footer>
+
+            <div data-ng-hide="hideButtonClose" class="closer" ng-click="$root.$modal.hide(name)"></div>
+        </div>
+    </div>
+    <div class="mask-overlay" ng-click="closeModal()"></div>
+</div><div ng-show="$root.$modal.isDisplayed(name)" transclude-context="" class="popup-wrapper centerbox mask ng-hide" name="npzqnvpjsaqajklrap3vtkij1d3rbv3ue" data-ng-title="binField.orgType" priority="1" noscroll="true" style="z-index: 101;">
+
+    <div class="popup-type">
+        <div class="popup-inner">
+            <header class="popup-header ng-binding" ng-bind="(ngTitle || title) | translate">Ұйым формасы </header>
+            <div ng-class="{ 'popup-container' : noscroll === false }" egov-window-height="" class="ng-scope" style="max-height: 1020px;">
+                <article class="popup-content" ng-transclude="">
+        <div class="input-wrapper ng-scope" ng-hide="chooseModel.calculating">
+            <div class="select-type">
+                <!-- ngIf: chooseModel.keys.length >= 10 -->
+                <div class="select-list noselect">
+
+                    <!-- ngIf: !$settings.isPod() --><div ng-if="!$settings.isPod()" class="list-wrapper choose-scroll ng-scope" clipbox="">
+                        <ul>
+                            <!-- ngRepeat: key in chooseModel.all --><li clip="" ng-repeat="key in chooseModel.all" ng-class="{ active: selected == key}" ng-click="chooseModel.select(key)" ng-bind="chooseModel.value(key)" class="ng-scope ng-binding active">--</li><!-- end ngRepeat: key in chooseModel.all -->
+                        </ul>
+                    </div><!-- end ngIf: !$settings.isPod() -->
+                    <!-- ngIf: $settings.isPod() -->
+
+                </div>
+            </div>
+        </div>
+
+    </article>
+            </div>
+
+            <footer class="actions-pad">
+                <div class="left-buttons" transclude-for="modal-left-buttons">
+
+                </div>
+                <div class="right-buttons" transclude-for="modal-right-buttons">
+
+                </div>
+                <div class="clr"></div>
+            </footer>
+
+            <div data-ng-hide="hideButtonClose" class="closer" ng-click="$root.$modal.hide(name)"></div>
+        </div>
+    </div>
+    <div class="mask-overlay" ng-click="closeModal()"></div>
+</div></body></html>

@@ -1,9 +1,9 @@
 import logging
-from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
+from decimal import Decimal, InvalidOperation
+
 from playwright.async_api import async_playwright
 from config import HEADLESS, DATA_DIR
-from decimal import Decimal, InvalidOperation
 
 logger = logging.getLogger(__name__)
 
@@ -131,8 +131,12 @@ class EgovParser:
 
         await self.page.wait_for_timeout(1200)
 
-        next_button = self.page.locator("button.next-button, button:has-text('Далее')").first
-        await next_button.click()
+        next_button = self.page.locator("button.next-button, button:has-text('Далее')")
+        if await next_button.count() == 0:
+            await self._save_debug("next_button_not_found")
+            raise RuntimeError("Кнопка 'Далее' не найдена")
+
+        await next_button.first.click()
 
         await self.page.wait_for_timeout(5000)
 
@@ -180,51 +184,9 @@ class EgovParser:
     async def _has_pagination(self) -> bool:
         return await self.page.locator("span[ng-repeat='page in pages'] a").count() > 0
 
-    async def _extract_table_data(self, table_locator) -> Dict:
-        rows = table_locator.locator("tr")
-        count = await rows.count()
-
-        item = {
-            "issuer": "-",
-            "start_date": "-",
-            "amount": "-",
-            "executor_contact": "-",
-        }
-
-        values = []
-
-        for i in range(count):
-            row = rows.nth(i)
-            cells = row.locator("td")
-            cell_count = await cells.count()
-            if cell_count < 2:
-                continue
-
-            value = (await cells.nth(1).inner_text()).strip() or "-"
-            values.append(value)
-
-        # Структура таблицы:
-        # 0 = орган
-        # 1 = номер исполнительного производства (игнорируем)
-        # 2 = дата возбуждения
-        # 3 = сумма
-        # 4 = категория дела (игнорируем)
-        # 5 = контакт исполнителя
-        # 6 = дата наложения запрета на выезд (если есть) — игнорируем
-
-        if len(values) >= 1:
-            item["issuer"] = values[0]
-
-        if len(values) >= 3:
-            item["start_date"] = values[2]
-
-        if len(values) >= 4:
-            item["amount"] = self._normalize_amount_string(values[3])
-
-        if len(values) >= 6:
-            item["executor_contact"] = values[5]
-
-        return item
+    def _normalize_text(self, value: str) -> str:
+        value = str(value).strip()
+        return value if value else "-"
 
     def _normalize_amount_string(self, raw: str) -> str:
         raw = str(raw).strip()
@@ -232,7 +194,6 @@ class EgovParser:
         if not raw or raw == "-":
             return "-"
 
-        # Убираем обычные и неразрывные пробелы, меняем запятую на точку
         normalized = raw.replace(" ", "").replace("\u00A0", "").replace(",", ".")
 
         cleaned_chars = []
@@ -264,6 +225,52 @@ class EgovParser:
 
         return format(value.quantize(Decimal("0.01")), "f")
 
+    async def _extract_table_data(self, table_locator) -> Dict:
+        rows = table_locator.locator("tr")
+        count = await rows.count()
+
+        item = {
+            "issuer": "-",
+            "start_date": "-",
+            "amount": "-",
+            "executor_contact": "-",
+        }
+
+        values = []
+
+        for i in range(count):
+            row = rows.nth(i)
+            cells = row.locator("td")
+            cell_count = await cells.count()
+            if cell_count < 2:
+                continue
+
+            value = self._normalize_text(await cells.nth(1).inner_text())
+            values.append(value)
+
+        # Структура таблицы:
+        # 0 = орган
+        # 1 = номер исполнительного производства (игнорируем)
+        # 2 = дата возбуждения
+        # 3 = сумма
+        # 4 = категория дела (игнорируем)
+        # 5 = контакт исполнителя
+        # 6 = дата наложения запрета на выезд (если есть) — игнорируем
+
+        if len(values) >= 1:
+            item["issuer"] = values[0]
+
+        if len(values) >= 3:
+            item["start_date"] = values[2]
+
+        if len(values) >= 4:
+            item["amount"] = self._normalize_amount_string(values[3])
+
+        if len(values) >= 6:
+            item["executor_contact"] = values[5]
+
+        return item
+
     async def _get_current_page_index(self) -> int:
         page_links = self.page.locator("span[ng-repeat='page in pages'] a")
         count = await page_links.count()
@@ -274,8 +281,17 @@ class EgovParser:
                 return i
         return 0
 
+    def _detail_key(self, item: Dict) -> Tuple[str, str, str, str]:
+        return (
+            item.get("issuer", "-"),
+            item.get("start_date", "-"),
+            item.get("amount", "-"),
+            item.get("executor_contact", "-"),
+        )
+
     async def _extract_all_pages_details(self) -> List[Dict]:
         details: List[Dict] = []
+        seen = set()
 
         page_links = self.page.locator("span[ng-repeat='page in pages'] a")
         pages_count = await page_links.count()
@@ -322,7 +338,12 @@ class EgovParser:
                 parsed = await self._extract_table_data(table)
 
                 if parsed["issuer"] != "-" or parsed["start_date"] != "-" or parsed["amount"] != "-":
-                    details.append(parsed)
+                    key = self._detail_key(parsed)
+                    if key not in seen:
+                        seen.add(key)
+                        details.append(parsed)
+                    else:
+                        logger.info("Skipped duplicate detail: %s", key)
 
         return details
 

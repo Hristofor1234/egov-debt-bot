@@ -9,7 +9,20 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, FSInputFile
 
-from config import BOT_TOKEN, INCOMING_DIR, OUTPUT_DIR
+from config import (
+    BOT_TOKEN,
+    INCOMING_DIR,
+    OUTPUT_DIR,
+    DB_PATH,
+    MIN_DELAY_SECONDS,
+    MAX_DELAY_SECONDS,
+    BATCH_SIZE,
+    BATCH_PAUSE_SECONDS,
+    MAX_RETRIES,
+    MAX_CONSECUTIVE_ERRORS,
+    MAX_INCOMING_FILES,
+    MAX_OUTPUT_FILES,
+)
 from storage import Storage
 from excel_utils import read_people, write_results, ExcelValidationError
 from egov_parser import EgovParser
@@ -25,32 +38,16 @@ if not BOT_TOKEN:
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-storage = Storage(Path("data/bot.db"))
+storage = Storage(DB_PATH)
 
-# ---------- Антибан / бережная обработка ----------
-MIN_DELAY_SECONDS = 10
-MAX_DELAY_SECONDS = 18
-
-BATCH_SIZE = 20
-BATCH_PAUSE_SECONDS = 240
-
-MAX_RETRIES = 3
 RETRY_DELAYS = [45, 90]
-
-MAX_CONSECUTIVE_ERRORS = 4
-# -----------------------------------------------
-
-# ---------- Хранение файлов ----------
-MAX_INCOMING_FILES = 3
-MAX_OUTPUT_FILES = 3
-# ------------------------------------
 
 
 def cleanup_old_files(directory: Path, keep_last: int) -> None:
     """
     Оставляет только keep_last последних файлов в директории.
     Сортировка идет по времени изменения файла.
-    Поддиректории не трогаем.
+    Поддиректории не трогаются.
     """
     if not directory.exists():
         return
@@ -181,8 +178,8 @@ async def last_handler(message: Message):
 async def document_handler(message: Message):
     document = message.document
 
-    if not document.file_name.lower().endswith(".xlsx"):
-        await message.answer("Нужен именно файл формата .xlsx")
+    if not document.file_name or not document.file_name.lower().endswith(".xlsx"):
+        await message.answer("Нужен именно Excel-файл формата .xlsx")
         return
 
     logger.info(
@@ -203,7 +200,6 @@ async def document_handler(message: Message):
 
     logger.info("Saved input file to %s", final_input_path)
 
-    # Чистим старые входящие файлы, оставляем только последние 3
     cleanup_old_files(INCOMING_DIR, MAX_INCOMING_FILES)
 
     file_id = storage.save_file_record(
@@ -327,7 +323,6 @@ async def document_handler(message: Message):
         write_results(final_input_path, output_file, results)
         storage.mark_processed(file_id, str(output_file))
 
-        # Чистим старые исходящие файлы, оставляем только последние 3
         cleanup_old_files(OUTPUT_DIR, MAX_OUTPUT_FILES)
 
     except Exception as e:
@@ -359,6 +354,14 @@ async def document_handler(message: Message):
     await message.answer_document(
         FSInputFile(output_file),
         caption="Готовый файл с результатами"
+    )
+
+
+@dp.message(F.photo | F.video | F.audio | F.voice | F.sticker | F.animation | F.video_note)
+async def unsupported_attachment_handler(message: Message):
+    await message.answer(
+        "Бот работает только с Excel-файлами .xlsx.\n"
+        "Отправьте файл с листом 'input' и столбцами fio / фио и iin / иин."
     )
 
 

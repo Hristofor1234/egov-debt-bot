@@ -114,15 +114,41 @@ def _format_worksheet(ws) -> None:
         vertical="top",
         wrap_text=True
     )
+    center_data_alignment = Alignment(
+        horizontal="center",
+        vertical="top",
+        wrap_text=True
+    )
 
+    # Заголовки
     for cell in ws[1]:
         cell.font = header_font
         cell.alignment = header_alignment
 
+    # Данные
     for row in ws.iter_rows(min_row=2):
         for cell in row:
             cell.alignment = data_alignment
 
+    # Для result делаем часть колонок более читаемыми
+    if ws.title == RESULT_SHEET:
+        center_columns = {
+            "B",  # ИИН
+            "C",  # Статус обработки
+            "D",  # Выезд запрещен
+            "G",  # Дата возбуждения
+            "H",  # Сумма долга
+            "I",  # Общая сумма
+            "J",  # Количество задолженностей
+        }
+
+        for col_letter in center_columns:
+            for cell in ws[col_letter]:
+                if cell.row == 1:
+                    continue
+                cell.alignment = center_data_alignment
+
+    # Автоподбор ширины столбцов
     for column_cells in ws.columns:
         max_length = 0
         column_index = column_cells[0].column
@@ -135,9 +161,15 @@ def _format_worksheet(ws) -> None:
             if longest_line > max_length:
                 max_length = longest_line
 
-        adjusted_width = min(max(max_length + 2, 12), 45)
+        # Более мягкая настройка ширины
+        if ws.title == INPUT_SHEET:
+            adjusted_width = min(max(max_length + 2, 12), 35)
+        else:
+            adjusted_width = min(max(max_length + 2, 12), 45)
+
         ws.column_dimensions[column_letter].width = adjusted_width
 
+    # Высота строк
     for row in ws.iter_rows():
         row_index = row[0].row
         max_lines = 1
@@ -149,18 +181,22 @@ def _format_worksheet(ws) -> None:
                 max_lines = line_count
 
         if row_index == 1:
-            ws.row_dimensions[row_index].height = 24
+            ws.row_dimensions[row_index].height = 26
         else:
-            ws.row_dimensions[row_index].height = max(18, min(15 * max_lines, 60))
+            ws.row_dimensions[row_index].height = max(20, min(18 * max_lines, 70))
 
+    # Закрепление первой строки
     ws.freeze_panes = "A2"
-    ws.auto_filter.ref = ws.dimensions
+
+    # Автофильтр
+    if ws.max_row >= 1 and ws.max_column >= 1:
+        ws.auto_filter.ref = ws.dimensions
 
 
 def write_results(source_file: Path, output_file: Path, results: List[Dict]) -> None:
     wb = load_workbook(source_file)
 
-    # Старый result всегда удаляем и создаем заново.
+    # Старый result всегда удаляем и создаем заново
     if RESULT_SHEET in wb.sheetnames:
         del wb[RESULT_SHEET]
 
@@ -190,6 +226,7 @@ def write_results(source_file: Path, output_file: Path, results: List[Dict]) -> 
         error_message = result.get("error_message", "")
         details = result.get("details", [])
 
+        # Если долгов нет, все равно пишем одну строку
         if not details:
             result_ws.append([
                 fio,
@@ -206,6 +243,7 @@ def write_results(source_file: Path, output_file: Path, results: List[Dict]) -> 
             ])
             continue
 
+        # Если долгов несколько — одна строка на каждый долг
         for detail in details:
             result_ws.append([
                 fio,
@@ -221,6 +259,7 @@ def write_results(source_file: Path, output_file: Path, results: List[Dict]) -> 
                 error_message,
             ])
 
+    # Форматируем все листы
     for ws in wb.worksheets:
         _format_worksheet(ws)
 

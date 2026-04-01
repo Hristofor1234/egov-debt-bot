@@ -22,6 +22,7 @@ from config import (
     MAX_CONSECUTIVE_ERRORS,
     MAX_INCOMING_FILES,
     MAX_OUTPUT_FILES,
+    LOG_CHAT_ID,
 )
 from storage import Storage
 from excel_utils import read_people, write_results, ExcelValidationError
@@ -44,11 +45,6 @@ RETRY_DELAYS = [45, 90]
 
 
 def cleanup_old_files(directory: Path, keep_last: int) -> None:
-    """
-    Оставляет только keep_last последних файлов в директории.
-    Сортировка идет по времени изменения файла.
-    Поддиректории не трогаются.
-    """
     if not directory.exists():
         return
 
@@ -91,7 +87,6 @@ def estimate_processing_time(total_rows: int, avg_check_duration: float | None) 
         avg_check_duration = 18.0
 
     avg_human_delay = (MIN_DELAY_SECONDS + MAX_DELAY_SECONDS) / 2
-
     processing_time = total_rows * avg_check_duration
 
     if total_rows > 1:
@@ -107,6 +102,26 @@ async def human_delay():
     delay = random.randint(MIN_DELAY_SECONDS, MAX_DELAY_SECONDS)
     logger.info("Sleeping between checks: %s sec", delay)
     await asyncio.sleep(delay)
+
+
+async def send_log(message_text: str) -> None:
+    if not LOG_CHAT_ID:
+        return
+
+    try:
+        await bot.send_message(chat_id=LOG_CHAT_ID, text=message_text)
+    except Exception as e:
+        logger.warning("Failed to send log message to LOG_CHAT_ID: %s", e)
+
+
+def format_user_info(message: Message) -> str:
+    user = message.from_user
+    if not user:
+        return "Неизвестный пользователь"
+
+    full_name = user.full_name or "Без имени"
+    username = f"@{user.username}" if user.username else "без username"
+    return f"{full_name} | {username} | id={user.id}"
 
 
 async def retry_check(parser: EgovParser, fio: str, iin: str) -> dict:
@@ -143,7 +158,12 @@ async def retry_check(parser: EgovParser, fio: str, iin: str) -> dict:
 
 @dp.message(Command("start"))
 async def start_handler(message: Message):
-    logger.info("Command /start from user_id=%s", message.from_user.id)
+    logger.info(
+        "Command /start | chat_id=%s | chat_type=%s | user_id=%s",
+        message.chat.id,
+        message.chat.type,
+        message.from_user.id if message.from_user else None,
+    )
     await message.answer(
         "Отправьте Excel-файл .xlsx\n\n"
         "Требования:\n"
@@ -152,6 +172,18 @@ async def start_handler(message: Message):
         "Бот можно повторно кормить его же обработанным файлом — "
         "он заново прочитает только лист input и пересоздаст result."
     )
+
+
+@dp.message(Command("chatid"))
+async def chatid_handler(message: Message):
+    logger.info(
+        "CHATID DEBUG | chat_id=%s | chat_type=%s | user_id=%s | text=%s",
+        message.chat.id,
+        message.chat.type,
+        message.from_user.id if message.from_user else None,
+        message.text,
+    )
+    await message.answer(f"chat_id: {message.chat.id}")
 
 
 @dp.message(Command("last"))
@@ -182,10 +214,20 @@ async def document_handler(message: Message):
         await message.answer("Нужен именно Excel-файл формата .xlsx")
         return
 
+    user_info = format_user_info(message)
+
     logger.info(
-        "Received document | user_id=%s | file_name=%s",
-        message.from_user.id,
+        "Received document | user=%s | chat_id=%s | file_name=%s",
+        user_info,
+        message.chat.id,
         document.file_name
+    )
+
+    await send_log(
+        "Получен новый файл.\n"
+        f"Пользователь: {user_info}\n"
+        f"Chat ID: {message.chat.id}\n"
+        f"Файл: {document.file_name}"
     )
 
     await message.answer("Файл получен. Проверяю структуру.")
@@ -214,11 +256,29 @@ async def document_handler(message: Message):
     except ExcelValidationError as e:
         logger.exception("Excel validation error")
         storage.mark_failed(file_id)
+
+        await send_log(
+            "Ошибка валидации Excel.\n"
+            f"Пользователь: {user_info}\n"
+            f"Chat ID: {message.chat.id}\n"
+            f"Файл: {document.file_name}\n"
+            f"Ошибка: {e}"
+        )
+
         await message.answer(f"Ошибка структуры файла:\n{e}")
         return
     except Exception as e:
         logger.exception("Unhandled file read error")
         storage.mark_failed(file_id)
+
+        await send_log(
+            "Ошибка чтения файла.\n"
+            f"Пользователь: {user_info}\n"
+            f"Chat ID: {message.chat.id}\n"
+            f"Файл: {document.file_name}\n"
+            f"Ошибка: {e}"
+        )
+
         await message.answer(f"Не удалось прочитать файл:\n{e}")
         return
 
@@ -236,6 +296,15 @@ async def document_handler(message: Message):
             f"Оценка рассчитана по среднему времени прошлых проверок: "
             f"{avg_check_duration:.1f} сек на запись."
         )
+
+    await send_log(
+        "Файл принят в обработку.\n"
+        f"Пользователь: {user_info}\n"
+        f"Chat ID: {message.chat.id}\n"
+        f"Файл: {document.file_name}\n"
+        f"Строк к обработке: {total}\n"
+        f"Оценка ожидания: {format_duration(estimated_seconds)}"
+    )
 
     await message.answer(
         f"Найдено строк для обработки: {total}\n"
@@ -293,6 +362,15 @@ async def document_handler(message: Message):
 
             if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
                 logger.error("Too many consecutive errors. Stopping processing.")
+
+                await send_log(
+                    "Обработка остановлена из-за серии ошибок.\n"
+                    f"Пользователь: {user_info}\n"
+                    f"Chat ID: {message.chat.id}\n"
+                    f"Файл: {document.file_name}\n"
+                    f"Обработано строк: {len(results)} из {total}"
+                )
+
                 await message.answer(
                     "Обработка остановлена: слишком много ошибок подряд.\n"
                     "Похоже на нестабильную работу сайта или временное ограничение."
@@ -328,6 +406,15 @@ async def document_handler(message: Message):
     except Exception as e:
         logger.exception("Unhandled error in document_handler")
         storage.mark_failed(file_id)
+
+        await send_log(
+            "Ошибка формирования итогового файла.\n"
+            f"Пользователь: {user_info}\n"
+            f"Chat ID: {message.chat.id}\n"
+            f"Файл: {document.file_name}\n"
+            f"Ошибка: {e}"
+        )
+
         await message.answer(f"Ошибка при формировании итогового файла:\n{e}")
         return
 
@@ -341,6 +428,18 @@ async def document_handler(message: Message):
         success_count,
         not_found_count,
         error_count
+    )
+
+    await send_log(
+        "Обработка завершена.\n"
+        f"Пользователь: {user_info}\n"
+        f"Chat ID: {message.chat.id}\n"
+        f"Файл: {document.file_name}\n"
+        f"Всего строк: {len(results)}\n"
+        f"Успешно: {success_count}\n"
+        f"Не найдено: {not_found_count}\n"
+        f"Ошибок: {error_count}\n"
+        f"Выходной файл: {output_file.name}"
     )
 
     await message.answer(

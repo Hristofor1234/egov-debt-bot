@@ -28,3 +28,5 @@ MAX_CONSECUTIVE_ERRORS = int(os.getenv("MAX_CONSECUTIVE_ERRORS", "4"))
 
 MAX_INCOMING_FILES = int(os.getenv("MAX_INCOMING_FILES", "3"))
 MAX_OUTPUT_FILES = int(os.getenv("MAX_OUTPUT_FILES", "3"))
+
+LOG_CHAT_ID = os.getenv("LOG_CHAT_ID", "").strip()

@@ -23,6 +23,8 @@ from config import (
     MAX_INCOMING_FILES,
     MAX_OUTPUT_FILES,
     LOG_CHAT_ID,
+    ERROR_LOG_CHAT_ID,
+    ERROR_LOG_MESSAGE_THREAD_ID,
 )
 from storage import Storage
 from excel_utils import read_people, write_results, write_single_result, ExcelValidationError
@@ -117,6 +119,22 @@ async def send_log(message_text: str) -> None:
         await bot.send_message(chat_id=LOG_CHAT_ID, text=message_text)
     except Exception as e:
         logger.warning("Failed to send log message to LOG_CHAT_ID: %s", e)
+
+
+async def send_error_log(message_text: str) -> None:
+    """Send errors to a dedicated Telegram topic when it is configured."""
+    if not ERROR_LOG_CHAT_ID:
+        logger.error("Error topic is not configured | %s", message_text)
+        return
+
+    try:
+        await bot.send_message(
+            chat_id=ERROR_LOG_CHAT_ID,
+            message_thread_id=ERROR_LOG_MESSAGE_THREAD_ID,
+            text=message_text,
+        )
+    except Exception as error:
+        logger.warning("Failed to send error log to Telegram topic: %s", error)
 
 
 def format_user_info(message: Message) -> str:
@@ -286,7 +304,7 @@ async def document_handler(message: Message):
         logger.exception("Excel validation error")
         storage.mark_failed(file_id)
 
-        await send_log(
+        await send_error_log(
             "Ошибка валидации Excel.\n"
             f"Пользователь: {user_info}\n"
             f"Chat ID: {message.chat.id}\n"
@@ -300,7 +318,7 @@ async def document_handler(message: Message):
         logger.exception("Unhandled file read error")
         storage.mark_failed(file_id)
 
-        await send_log(
+        await send_error_log(
             "Ошибка чтения файла.\n"
             f"Пользователь: {user_info}\n"
             f"Chat ID: {message.chat.id}\n"
@@ -397,7 +415,7 @@ async def document_handler(message: Message):
             if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
                 logger.error("Too many consecutive errors. Stopping processing.")
 
-                await send_log(
+                await send_error_log(
                     "Обработка остановлена из-за серии ошибок.\n"
                     f"Пользователь: {user_info}\n"
                     f"Chat ID: {message.chat.id}\n"
@@ -441,7 +459,7 @@ async def document_handler(message: Message):
         logger.exception("Unhandled error in document_handler")
         storage.mark_failed(file_id)
 
-        await send_log(
+        await send_error_log(
             "Ошибка формирования итогового файла.\n"
             f"Пользователь: {user_info}\n"
             f"Chat ID: {message.chat.id}\n"
@@ -457,6 +475,15 @@ async def document_handler(message: Message):
     success_count = sum(1 for x in results if x["check_status"] == "Обработано")
     not_found_count = sum(1 for x in results if x["check_status"] == "Не найдено")
     error_count = sum(1 for x in results if x["check_status"] == "Ошибка проверки")
+
+    if error_count:
+        await send_error_log(
+            "В обработанном Excel есть ошибки проверки.\n"
+            f"Пользователь: {user_info}\n"
+            f"Chat ID: {message.chat.id}\n"
+            f"Файл: {document.file_name}\n"
+            f"Ошибочных строк: {error_count} из {len(results)}"
+        )
 
     logger.info(
         "Processing completed | total=%s | success=%s | not_found=%s | errors=%s",
@@ -539,6 +566,12 @@ async def text_handler(message: Message):
         )
 
         if result["check_status"] == "Ошибка проверки":
+            await send_error_log(
+                "Ошибка проверки запроса из чата.\n"
+                f"Пользователь: {format_user_info(message)}\n"
+                f"Chat ID: {message.chat.id}\n"
+                f"Причина: {result.get('error_message', 'неизвестна')}"
+            )
             await edit_progress(
                 status_message,
                 "Не получилось выполнить проверку.\n"
@@ -563,6 +596,12 @@ async def text_handler(message: Message):
         )
     except Exception as error:
         logger.exception("Chat check failed | fio=%s | iin=%s", fio, iin)
+        await send_error_log(
+            "Непредвиденная ошибка проверки запроса из чата.\n"
+            f"Пользователь: {format_user_info(message)}\n"
+            f"Chat ID: {message.chat.id}\n"
+            f"Причина: {error}"
+        )
         await edit_progress(
             status_message,
             f"Проверка не выполнена.\nПрогресс: 100%\n\nОшибка: {error}",

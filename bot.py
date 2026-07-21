@@ -27,6 +27,7 @@ from config import (
 from storage import Storage
 from excel_utils import read_people, write_results, ExcelValidationError
 from egov_parser import EgovParser
+from person_utils import PersonInputError, format_single_result, parse_person_request
 
 logging.basicConfig(
     level=logging.INFO,
@@ -169,7 +170,10 @@ async def start_handler(message: Message):
         message.from_user.id if message.from_user else None,
     )
     await message.answer(
-        "Отправьте Excel-файл .xlsx\n\n"
+        "Отправьте Excel-файл .xlsx или одним сообщением ФИО и ИИН.\n\n"
+        "Пример сообщения:\n"
+        "Иванов Иван Иванович\n"
+        "123456789012\n\n"
         "Требования:\n"
         "- бот читает только лист: input\n"
         "- обязательные столбцы: fio / фио и iin / иин\n\n"
@@ -484,11 +488,37 @@ async def text_handler(message: Message):
     if text.startswith("/"):
         return
 
-    await message.answer(
-        "Нужно закинуть Excel-файл .xlsx.\n"
-        "Бот читает только лист 'input'.\n"
-        "Обязательные столбцы: fio / фио и iin / иин."
-    )
+    try:
+        fio, iin = parse_person_request(text)
+    except PersonInputError as error:
+        await message.answer(
+            f"{error}\n\n"
+            "Отправьте ФИО и один ИИН из 12 цифр, например:\n"
+            "Иванов Иван Иванович\n123456789012"
+        )
+        return
+
+    await message.answer("Запрос добавлен в очередь. Проверяю eGov.")
+    await processing_queue.get()
+
+    try:
+        started_at = time.perf_counter()
+        async with EgovParser() as parser:
+            result = await retry_check(parser, fio, iin)
+        duration_seconds = time.perf_counter() - started_at
+        storage.save_check_stat(
+            fio=fio,
+            iin=iin,
+            duration_seconds=duration_seconds,
+            status=result["check_status"],
+        )
+        await message.answer(format_single_result(result))
+    except Exception as error:
+        logger.exception("Chat check failed | fio=%s | iin=%s", fio, iin)
+        await message.answer(f"Не удалось выполнить проверку: {error}")
+    finally:
+        processing_queue.task_done()
+        processing_queue.put_nowait(None)
 
 
 async def main():

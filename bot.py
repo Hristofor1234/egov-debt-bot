@@ -610,7 +610,7 @@ async def text_handler(message: Message):
                 "Прогресс: 100%\n\n"
                 "eGov временно не ответил ожидаемым образом. Попробуйте позже.",
             )
-            await update_task_log(task_log, "Проверка запроса завершилась ошибкой.")
+            await update_task_log(task_log, "Запрос не обработан. Подробности отправлены в топик ошибок.")
             return
 
         output_file = OUTPUT_DIR / f"chat_result_{message.from_user.id}_{iin}.xlsx"
@@ -629,10 +629,7 @@ async def text_handler(message: Message):
         )
         await update_task_log(
             task_log,
-            "Проверка запроса завершена.\n"
-            f"Статус: {result['check_status']}\n"
-            f"Задолженностей: {result['debts_count']}\n"
-            f"Общая сумма: {result['total_amount']}"
+            "Запрос обработан успешно."
         )
     except Exception as error:
         logger.exception("Chat check failed | fio=%s | iin=%s", fio, iin)
@@ -646,7 +643,7 @@ async def text_handler(message: Message):
             status_message,
             f"Проверка не выполнена.\nПрогресс: 100%\n\nОшибка: {error}",
         )
-        await update_task_log(task_log, "Проверка запроса завершилась непредвиденной ошибкой.")
+        await update_task_log(task_log, "Запрос не обработан. Подробности отправлены в топик ошибок.")
     finally:
         ticker_stopped.set()
         ticker_task.cancel()

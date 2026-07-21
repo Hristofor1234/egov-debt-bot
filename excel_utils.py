@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import List, Dict
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
 
@@ -264,3 +264,14 @@ def write_results(source_file: Path, output_file: Path, results: List[Dict]) -> 
         _format_worksheet(ws)
 
     wb.save(output_file)
+
+
+def write_single_result(output_file: Path, result: Dict) -> None:
+    """Create a standalone workbook for a result requested in Telegram chat."""
+    workbook = Workbook()
+    input_ws = workbook.active
+    input_ws.title = INPUT_SHEET
+    input_ws.append(["ФИО", "ИИН"])
+    input_ws.append([result.get("fio", ""), result.get("iin", "")])
+    workbook.save(output_file)
+    write_results(output_file, output_file, [result])

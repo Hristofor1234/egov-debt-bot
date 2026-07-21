@@ -25,7 +25,7 @@ from config import (
     LOG_CHAT_ID,
 )
 from storage import Storage
-from excel_utils import read_people, write_results, ExcelValidationError
+from excel_utils import read_people, write_results, write_single_result, ExcelValidationError
 from egov_parser import EgovParser
 from person_utils import PersonInputError, format_single_result, parse_person_request
 
@@ -159,6 +159,27 @@ async def retry_check(parser: EgovParser, fio: str, iin: str) -> dict:
             await asyncio.sleep(retry_delay)
 
     return last_result
+
+
+async def edit_progress(status_message: Message, text: str) -> None:
+    try:
+        await status_message.edit_text(text)
+    except Exception as error:
+        logger.debug("Failed to update progress message: %s", error)
+
+
+async def progress_ticker(status_message: Message, stopped: asyncio.Event) -> None:
+    """Show live progress while a single eGov request is running."""
+    progress = 15
+    while not stopped.is_set() and progress < 90:
+        await asyncio.sleep(5)
+        if stopped.is_set():
+            return
+        progress = min(progress + 10, 90)
+        await edit_progress(
+            status_message,
+            f"Проверка eGov выполняется…\nПрогресс: {progress}%",
+        )
 
 
 @dp.message(Command("start"))
@@ -498,8 +519,12 @@ async def text_handler(message: Message):
         )
         return
 
-    await message.answer("Запрос добавлен в очередь. Проверяю eGov.")
+    status_message = await message.answer("Запрос принят.\nПрогресс: 0%")
     await processing_queue.get()
+    await edit_progress(status_message, "Запрос взят в обработку.\nПрогресс: 10%")
+
+    ticker_stopped = asyncio.Event()
+    ticker_task = asyncio.create_task(progress_ticker(status_message, ticker_stopped))
 
     try:
         started_at = time.perf_counter()
@@ -512,11 +537,34 @@ async def text_handler(message: Message):
             duration_seconds=duration_seconds,
             status=result["check_status"],
         )
-        await message.answer(format_single_result(result))
+
+        output_file = OUTPUT_DIR / f"chat_result_{message.from_user.id}_{iin}.xlsx"
+        write_single_result(output_file, result)
+        cleanup_old_files(OUTPUT_DIR, MAX_OUTPUT_FILES)
+
+        await edit_progress(
+            status_message,
+            "Проверка завершена.\n"
+            "Прогресс: 100%\n\n"
+            f"{format_single_result(result)}",
+        )
+        await message.answer_document(
+            FSInputFile(output_file),
+            caption="Excel-файл с результатом проверки",
+        )
     except Exception as error:
         logger.exception("Chat check failed | fio=%s | iin=%s", fio, iin)
-        await message.answer(f"Не удалось выполнить проверку: {error}")
+        await edit_progress(
+            status_message,
+            f"Проверка не выполнена.\nПрогресс: 100%\n\nОшибка: {error}",
+        )
     finally:
+        ticker_stopped.set()
+        ticker_task.cancel()
+        try:
+            await ticker_task
+        except asyncio.CancelledError:
+            pass
         processing_queue.task_done()
         processing_queue.put_nowait(None)
 

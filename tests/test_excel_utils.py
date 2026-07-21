@@ -4,7 +4,7 @@ from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
 
-from excel_utils import ExcelValidationError, read_people, write_results
+from excel_utils import ExcelValidationError, read_people, write_results, write_single_result
 
 
 class ExcelUtilsTests(unittest.TestCase):
@@ -63,6 +63,25 @@ class ExcelUtilsTests(unittest.TestCase):
         self.assertEqual(result["E2"].value, "Орган 1")
         self.assertEqual(result["E3"].value, "Орган 2")
         self.assertEqual(result["I2"].value, "300")
+
+    def test_writes_standalone_chat_result(self):
+        output = Path(tempfile.mkstemp(suffix=".xlsx")[1])
+        self.addCleanup(output.unlink)
+
+        write_single_result(output, {
+            "fio": "Алия Тест",
+            "iin": "123456789012",
+            "check_status": "Не найдено",
+            "travel_status": "-",
+            "total_amount": "-",
+            "debts_count": 0,
+            "error_message": "",
+            "details": [],
+        })
+
+        workbook = load_workbook(output)
+        self.assertEqual(workbook.sheetnames, ["input", "result"])
+        self.assertEqual(workbook["result"]["C2"].value, "Не найдено")
 
 
 if __name__ == "__main__":

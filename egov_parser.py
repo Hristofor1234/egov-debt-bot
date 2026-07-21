@@ -90,13 +90,18 @@ class EgovParser:
     async def _find_first_visible(self, selectors: Tuple[str, ...]):
         """Return the first visible locator from several eGov UI variants."""
         for selector in selectors:
-            locator = self.page.locator(selector).first
-            try:
-                if await locator.is_visible(timeout=1500):
-                    logger.info("Using selector: %s", selector)
-                    return locator
-            except Exception:
-                continue
+            locators = self.page.locator(selector)
+            count = await locators.count()
+            logger.info("Selector candidates | %s | count=%s", selector, count)
+
+            for index in range(count):
+                locator = locators.nth(index)
+                try:
+                    if await locator.is_visible(timeout=1500):
+                        logger.info("Using selector: %s | candidate=%s", selector, index)
+                        return locator
+                except Exception:
+                    continue
         return None
 
     async def _open_service(self):

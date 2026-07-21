@@ -538,6 +538,15 @@ async def text_handler(message: Message):
             status=result["check_status"],
         )
 
+        if result["check_status"] == "Ошибка проверки":
+            await edit_progress(
+                status_message,
+                "Не получилось выполнить проверку.\n"
+                "Прогресс: 100%\n\n"
+                "eGov временно не ответил ожидаемым образом. Попробуйте позже.",
+            )
+            return
+
         output_file = OUTPUT_DIR / f"chat_result_{message.from_user.id}_{iin}.xlsx"
         write_single_result(output_file, result)
         cleanup_old_files(OUTPUT_DIR, MAX_OUTPUT_FILES)

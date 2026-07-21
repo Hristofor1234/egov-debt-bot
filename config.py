@@ -30,6 +30,8 @@ MAX_INCOMING_FILES = int(os.getenv("MAX_INCOMING_FILES", "3"))
 MAX_OUTPUT_FILES = int(os.getenv("MAX_OUTPUT_FILES", "3"))
 
 LOG_CHAT_ID = os.getenv("LOG_CHAT_ID", "").strip()
+_log_thread_value = os.getenv("LOG_MESSAGE_THREAD_ID", "").strip()
+LOG_MESSAGE_THREAD_ID = int(_log_thread_value) if _log_thread_value else None
 ERROR_LOG_CHAT_ID = os.getenv("ERROR_LOG_CHAT_ID", "").strip()
 _error_log_thread_value = os.getenv("ERROR_LOG_MESSAGE_THREAD_ID", "").strip()
 ERROR_LOG_MESSAGE_THREAD_ID = int(_error_log_thread_value) if _error_log_thread_value else None

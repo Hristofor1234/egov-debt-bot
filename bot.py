@@ -23,6 +23,7 @@ from config import (
     MAX_INCOMING_FILES,
     MAX_OUTPUT_FILES,
     LOG_CHAT_ID,
+    LOG_MESSAGE_THREAD_ID,
     ERROR_LOG_CHAT_ID,
     ERROR_LOG_MESSAGE_THREAD_ID,
 )
@@ -111,14 +112,28 @@ async def human_delay():
     await asyncio.sleep(delay)
 
 
-async def send_log(message_text: str) -> None:
+async def send_log(message_text: str) -> Message | None:
     if not LOG_CHAT_ID:
-        return
+        return None
 
     try:
-        await bot.send_message(chat_id=LOG_CHAT_ID, text=message_text)
+        return await bot.send_message(
+            chat_id=LOG_CHAT_ID,
+            message_thread_id=LOG_MESSAGE_THREAD_ID,
+            text=message_text,
+        )
     except Exception as e:
         logger.warning("Failed to send log message to LOG_CHAT_ID: %s", e)
+        return None
+
+
+async def update_task_log(log_message: Message | None, text: str) -> None:
+    if log_message is None:
+        return
+    try:
+        await log_message.edit_text(text)
+    except Exception as error:
+        logger.warning("Failed to update task log: %s", error)
 
 
 async def send_error_log(message_text: str) -> None:
@@ -270,7 +285,7 @@ async def document_handler(message: Message):
         document.file_name
     )
 
-    await send_log(
+    task_log = await send_log(
         "Получен новый файл.\n"
         f"Пользователь: {user_info}\n"
         f"Chat ID: {message.chat.id}\n"
@@ -311,6 +326,7 @@ async def document_handler(message: Message):
             f"Файл: {document.file_name}\n"
             f"Ошибка: {e}"
         )
+        await update_task_log(task_log, "Обработка файла завершилась ошибкой валидации.")
 
         await message.answer(f"Ошибка структуры файла:\n{e}")
         return
@@ -325,19 +341,12 @@ async def document_handler(message: Message):
             f"Файл: {document.file_name}\n"
             f"Ошибка: {e}"
         )
+        await update_task_log(task_log, "Обработка файла завершилась ошибкой чтения.")
 
         await message.answer(f"Не удалось прочитать файл:\n{e}")
         return
 
-    await message.answer(
-        "Файл добавлен в очередь. Начну проверку, когда завершится предыдущая задача."
-    )
-    await processing_queue.get()
-
-    results = []
     total = len(people)
-    consecutive_errors = 0
-
     avg_check_duration = storage.get_recent_average_check_duration(limit=100)
     estimated_seconds = estimate_processing_time(total, avg_check_duration)
 
@@ -349,14 +358,29 @@ async def document_handler(message: Message):
             f"{avg_check_duration:.1f} сек на запись."
         )
 
-    await send_log(
-        "Файл принят в обработку.\n"
+    await update_task_log(
+        task_log,
+        "Файл принят и добавлен в очередь.\n"
         f"Пользователь: {user_info}\n"
         f"Chat ID: {message.chat.id}\n"
         f"Файл: {document.file_name}\n"
         f"Строк к обработке: {total}\n"
         f"Оценка ожидания: {format_duration(estimated_seconds)}"
     )
+
+    await message.answer(
+        "Файл добавлен в очередь. Начну проверку, когда завершится предыдущая задача."
+    )
+    await processing_queue.get()
+    await update_task_log(
+        task_log,
+        "Файл взят в обработку.\n"
+        f"Файл: {document.file_name}\n"
+        f"Строк к обработке: {total}"
+    )
+
+    results = []
+    consecutive_errors = 0
 
     await message.answer(
         f"Найдено строк для обработки: {total}\n"
@@ -468,6 +492,7 @@ async def document_handler(message: Message):
         )
 
         await message.answer(f"Ошибка при формировании итогового файла:\n{e}")
+        await update_task_log(task_log, "Обработка файла завершилась ошибкой формирования результата.")
         processing_queue.task_done()
         processing_queue.put_nowait(None)
         return
@@ -493,7 +518,8 @@ async def document_handler(message: Message):
         error_count
     )
 
-    await send_log(
+    await update_task_log(
+        task_log,
         "Обработка завершена.\n"
         f"Пользователь: {user_info}\n"
         f"Chat ID: {message.chat.id}\n"
@@ -546,8 +572,14 @@ async def text_handler(message: Message):
         )
         return
 
+    task_log = await send_log(
+        "Получен запрос на проверку из чата.\n"
+        f"Пользователь: {format_user_info(message)}\n"
+        f"Chat ID: {message.chat.id}"
+    )
     status_message = await message.answer("Запрос принят.\nПрогресс: 0%")
     await processing_queue.get()
+    await update_task_log(task_log, "Запрос взят в обработку.")
     await edit_progress(status_message, "Запрос взят в обработку.\nПрогресс: 10%")
 
     ticker_stopped = asyncio.Event()
@@ -578,6 +610,7 @@ async def text_handler(message: Message):
                 "Прогресс: 100%\n\n"
                 "eGov временно не ответил ожидаемым образом. Попробуйте позже.",
             )
+            await update_task_log(task_log, "Проверка запроса завершилась ошибкой.")
             return
 
         output_file = OUTPUT_DIR / f"chat_result_{message.from_user.id}_{iin}.xlsx"
@@ -594,6 +627,13 @@ async def text_handler(message: Message):
             FSInputFile(output_file),
             caption="Excel-файл с результатом проверки",
         )
+        await update_task_log(
+            task_log,
+            "Проверка запроса завершена.\n"
+            f"Статус: {result['check_status']}\n"
+            f"Задолженностей: {result['debts_count']}\n"
+            f"Общая сумма: {result['total_amount']}"
+        )
     except Exception as error:
         logger.exception("Chat check failed | fio=%s | iin=%s", fio, iin)
         await send_error_log(
@@ -606,6 +646,7 @@ async def text_handler(message: Message):
             status_message,
             f"Проверка не выполнена.\nПрогресс: 100%\n\nОшибка: {error}",
         )
+        await update_task_log(task_log, "Проверка запроса завершилась непредвиденной ошибкой.")
     finally:
         ticker_stopped.set()
         ticker_task.cancel()
@@ -620,6 +661,7 @@ async def text_handler(message: Message):
 async def main():
     logger.info("Bot polling started")
     processing_queue.put_nowait(None)
+    await send_log("Сервис eGov Debt Bot запущен и готов к обработке запросов.")
     try:
         await dp.start_polling(bot)
     except (KeyboardInterrupt, asyncio.CancelledError):

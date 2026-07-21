@@ -104,6 +104,101 @@ class EgovParser:
                     continue
         return None
 
+    async def _find_dynamic_iin_input(self):
+        """Fallback for UI updates: score visible inputs by form semantics."""
+        candidates = self.page.locator("input[type='text'], input:not([type])")
+        best_locator = None
+        best_score = 0
+
+        for index in range(await candidates.count()):
+            locator = candidates.nth(index)
+            try:
+                if not await locator.is_visible() or await locator.is_disabled():
+                    continue
+
+                metadata = await locator.evaluate("""
+                    element => {
+                        const attributes = [...element.attributes]
+                            .map(attribute => `${attribute.name}=${attribute.value}`)
+                            .join(' ');
+                        const container = element.closest('#input, #uin, form, section, article, div');
+                        const context = [
+                            element.placeholder,
+                            element.getAttribute('aria-label'),
+                            element.name,
+                            element.id,
+                            container?.id,
+                            container?.className,
+                            container?.innerText,
+                        ].filter(Boolean).join(' ');
+                        return {attributes, context, maxLength: element.maxLength};
+                    }
+                """)
+            except Exception:
+                continue
+
+            haystack = f"{metadata['attributes']} {metadata['context']}".lower()
+            score = 0
+            if metadata["maxLength"] == 12:
+                score += 5
+            if any(term in haystack for term in ("иин", "iin", "uin", "жсн")):
+                score += 6
+            if "#input" in haystack or "input" in haystack:
+                score += 1
+            if "uin" in haystack:
+                score += 3
+
+            logger.info("Dynamic IIN candidate | index=%s | score=%s", index, score)
+            if score > best_score:
+                best_score = score
+                best_locator = locator
+
+        if best_locator is not None and best_score >= 5:
+            logger.info("Using dynamic IIN candidate | score=%s", best_score)
+            return best_locator
+        return None
+
+    async def _find_iin_input(self):
+        return await self._find_first_visible(IIN_INPUT_SELECTORS) or await self._find_dynamic_iin_input()
+
+    async def _find_dynamic_next_button(self):
+        """Fallback for renamed buttons: select a visible, enabled continuation action."""
+        candidates = self.page.locator("button, input[type='submit'], input[type='button']")
+        best_locator = None
+        best_score = 0
+
+        for index in range(await candidates.count()):
+            locator = candidates.nth(index)
+            try:
+                if not await locator.is_visible() or not await locator.is_enabled():
+                    continue
+                metadata = await locator.evaluate("""
+                    element => [
+                        element.innerText,
+                        element.value,
+                        element.getAttribute('aria-label'),
+                        element.getAttribute('title'),
+                        element.className,
+                        element.getAttribute('ng-click'),
+                    ].filter(Boolean).join(' ').toLowerCase()
+                """)
+            except Exception:
+                continue
+
+            score = sum(
+                3 for term in ("далее", "жалғастыру", "ары қарай", "next", "continue", "sendapprequest")
+                if term in metadata
+            )
+            logger.info("Dynamic next-button candidate | index=%s | score=%s", index, score)
+            if score > best_score:
+                best_score = score
+                best_locator = locator
+
+        if best_locator is not None and best_score > 0:
+            logger.info("Using dynamic next-button candidate | score=%s", best_score)
+            return best_locator
+        return None
+
     async def _open_service(self):
         logger.info("Opening eGov service page")
         await self.page.goto(
@@ -118,7 +213,7 @@ class EgovParser:
         except Exception:
             logger.info("networkidle not reached, continuing")
 
-        input_locator = await self._find_first_visible(IIN_INPUT_SELECTORS)
+        input_locator = await self._find_iin_input()
         if input_locator is None:
             await self._save_debug("open_service_failed")
             raise RuntimeError(
@@ -130,7 +225,7 @@ class EgovParser:
         await self._open_service()
 
     async def _get_input_locator(self):
-        locator = await self._find_first_visible(IIN_INPUT_SELECTORS)
+        locator = await self._find_iin_input()
         if locator is not None:
             return locator
         raise RuntimeError("Поле ввода ИИН не найдено")
@@ -148,7 +243,10 @@ class EgovParser:
 
         await self.page.wait_for_timeout(1200)
 
-        next_button = await self._find_first_visible(NEXT_BUTTON_SELECTORS)
+        next_button = (
+            await self._find_first_visible(NEXT_BUTTON_SELECTORS)
+            or await self._find_dynamic_next_button()
+        )
         if next_button is None:
             await self._save_debug("next_button_not_found")
             raise RuntimeError("Кнопка 'Далее' не найдена")

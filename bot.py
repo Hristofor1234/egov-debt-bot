@@ -41,6 +41,10 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 storage = Storage(DB_PATH)
 
+# A single token makes document processing strictly FIFO.  Telegram handlers can
+# receive uploads concurrently, but only one Playwright session may query eGov.
+processing_queue: asyncio.Queue[None] = asyncio.Queue(maxsize=1)
+
 RETRY_DELAYS = [45, 90]
 
 
@@ -282,6 +286,11 @@ async def document_handler(message: Message):
         await message.answer(f"Не удалось прочитать файл:\n{e}")
         return
 
+    await message.answer(
+        "Файл добавлен в очередь. Начну проверку, когда завершится предыдущая задача."
+    )
+    await processing_queue.get()
+
     results = []
     total = len(people)
     consecutive_errors = 0
@@ -416,6 +425,8 @@ async def document_handler(message: Message):
         )
 
         await message.answer(f"Ошибка при формировании итогового файла:\n{e}")
+        processing_queue.task_done()
+        processing_queue.put_nowait(None)
         return
 
     success_count = sum(1 for x in results if x["check_status"] == "Обработано")
@@ -454,6 +465,8 @@ async def document_handler(message: Message):
         FSInputFile(output_file),
         caption="Готовый файл с результатами"
     )
+    processing_queue.task_done()
+    processing_queue.put_nowait(None)
 
 
 @dp.message(F.photo | F.video | F.audio | F.voice | F.sticker | F.animation | F.video_note)
@@ -480,6 +493,7 @@ async def text_handler(message: Message):
 
 async def main():
     logger.info("Bot polling started")
+    processing_queue.put_nowait(None)
     try:
         await dp.start_polling(bot)
     except (KeyboardInterrupt, asyncio.CancelledError):

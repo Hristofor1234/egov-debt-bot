@@ -5,3 +5,7 @@ __pycache__/
 *.pyo
 .idea/
 .vscode/
+
+# Runtime files may contain personal data and diagnostic snapshots.
+data/*
+!data/.gitkeep

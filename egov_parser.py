@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, List, Tuple
 from decimal import Decimal, InvalidOperation
+from datetime import datetime, timezone
 
 from playwright.async_api import async_playwright
 from config import HEADLESS, DATA_DIR
@@ -9,6 +10,23 @@ logger = logging.getLogger(__name__)
 
 DEBUG_DIR = DATA_DIR / "debug"
 DEBUG_DIR.mkdir(parents=True, exist_ok=True)
+
+IIN_INPUT_SELECTORS = (
+    "input[ng-model='viewModel.inputModel']",
+    "input[maxlength='12']",
+    "input[placeholder*='ИИН']",
+    "input[aria-label*='ИИН']",
+    "input[name*='iin' i]",
+    "div#input input[type='text']",
+    "input.input-type.monospace",
+)
+NEXT_BUTTON_SELECTORS = (
+    "button.next-button",
+    "button:has-text('Далее')",
+    "button:has-text('Жалғастыру')",
+    "button[type='submit']",
+)
+RESULT_MARKERS = "div.wrapper, div.debt-item, div.pages, button.button-newreq, button:has-text('Новый запрос')"
 
 
 class EgovParser:
@@ -55,8 +73,10 @@ class EgovParser:
 
     async def _save_debug(self, prefix: str):
         try:
-            screenshot_path = DEBUG_DIR / f"{prefix}.png"
-            html_path = DEBUG_DIR / f"{prefix}.html"
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            debug_prefix = f"{prefix}_{stamp}"
+            screenshot_path = DEBUG_DIR / f"{debug_prefix}.png"
+            html_path = DEBUG_DIR / f"{debug_prefix}.html"
 
             await self.page.screenshot(path=str(screenshot_path), full_page=True)
             html = await self.page.content()
@@ -66,6 +86,18 @@ class EgovParser:
             logger.info("Saved debug html: %s", html_path)
         except Exception as e:
             logger.warning("Failed to save debug artifacts: %s", e)
+
+    async def _find_first_visible(self, selectors: Tuple[str, ...]):
+        """Return the first visible locator from several eGov UI variants."""
+        for selector in selectors:
+            locator = self.page.locator(selector).first
+            try:
+                if await locator.is_visible(timeout=1500):
+                    logger.info("Using selector: %s", selector)
+                    return locator
+            except Exception:
+                continue
+        return None
 
     async def _open_service(self):
         logger.info("Opening eGov service page")
@@ -81,41 +113,21 @@ class EgovParser:
         except Exception:
             logger.info("networkidle not reached, continuing")
 
-        possible_selectors = [
-            "input[ng-model='viewModel.inputModel']",
-            "input[maxlength='12']",
-            "div#input input[type='text']",
-            "input.input-type.monospace",
-        ]
-
-        found = False
-        for selector in possible_selectors:
-            count = await self.page.locator(selector).count()
-            logger.info("Selector check | %s | count=%s", selector, count)
-            if count > 0:
-                await self.page.locator(selector).first.wait_for(state="visible", timeout=10000)
-                found = True
-                break
-
-        if not found:
+        input_locator = await self._find_first_visible(IIN_INPUT_SELECTORS)
+        if input_locator is None:
             await self._save_debug("open_service_failed")
-            raise RuntimeError("Не найдено поле ввода ИИН на странице")
+            raise RuntimeError(
+                f"Не найдено поле ввода ИИН на странице eGov (URL: {self.page.url})"
+            )
 
     async def _go_to_start_page(self):
         logger.info("Returning to start page")
         await self._open_service()
 
     async def _get_input_locator(self):
-        selectors = [
-            "input[ng-model='viewModel.inputModel']",
-            "input[maxlength='12']",
-            "div#input input[type='text']",
-            "input.input-type.monospace",
-        ]
-        for selector in selectors:
-            locator = self.page.locator(selector)
-            if await locator.count() > 0:
-                return locator.first
+        locator = await self._find_first_visible(IIN_INPUT_SELECTORS)
+        if locator is not None:
+            return locator
         raise RuntimeError("Поле ввода ИИН не найдено")
 
     async def _fill_iin_and_submit(self, iin: str):
@@ -131,12 +143,12 @@ class EgovParser:
 
         await self.page.wait_for_timeout(1200)
 
-        next_button = self.page.locator("button.next-button, button:has-text('Далее')")
-        if await next_button.count() == 0:
+        next_button = await self._find_first_visible(NEXT_BUTTON_SELECTORS)
+        if next_button is None:
             await self._save_debug("next_button_not_found")
             raise RuntimeError("Кнопка 'Далее' не найдена")
 
-        await next_button.first.click()
+        await next_button.click()
 
         await self.page.wait_for_timeout(5000)
 
@@ -145,10 +157,7 @@ class EgovParser:
         except Exception:
             logger.info("networkidle after click not reached, continuing")
 
-        await self.page.wait_for_selector(
-            "div.wrapper, div.debt-item, div.pages, button.button-newreq",
-            timeout=30000
-        )
+        await self.page.wait_for_selector(RESULT_MARKERS, timeout=30000)
 
     async def _extract_travel_status(self) -> str:
         wrapper = self.page.locator("div.wrapper").first

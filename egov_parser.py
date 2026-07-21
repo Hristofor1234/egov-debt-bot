@@ -97,7 +97,7 @@ class EgovParser:
             for index in range(count):
                 locator = locators.nth(index)
                 try:
-                    if await locator.is_visible(timeout=1500):
+                    if await locator.is_visible():
                         logger.info("Using selector: %s | candidate=%s", selector, index)
                         return locator
                 except Exception:
